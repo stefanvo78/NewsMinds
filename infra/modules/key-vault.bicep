@@ -68,7 +68,8 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
 
     // Purge protection prevents permanent deletion even by admins
     // Enable for production, but can be inconvenient for dev
-    enablePurgeProtection: enablePurgeProtection
+    // NOTE: Only set when true; Azure API rejects explicit false values
+    enablePurgeProtection: enablePurgeProtection ? true : null
 
     // Allow Azure services to bypass network rules
     // Needed for App Service, Container Apps to access secrets

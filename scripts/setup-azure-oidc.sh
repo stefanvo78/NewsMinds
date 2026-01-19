@@ -39,7 +39,8 @@ fi
 
 GITHUB_USERNAME=$1
 REPO_NAME=$2
-APP_NAME="github-actions-${REPO_NAME,,}"  # lowercase
+# Convert to lowercase using tr (compatible with macOS Bash 3.x)
+APP_NAME="github-actions-$(echo "$REPO_NAME" | tr '[:upper:]' '[:lower:]')"
 
 echo -e "${GREEN}🔧 Setting up Azure OIDC for GitHub Actions${NC}"
 echo "   GitHub Repo: ${GITHUB_USERNAME}/${REPO_NAME}"

@@ -1,0 +1,81 @@
+# ============================================================================
+# Bicep Validation Workflow
+# ============================================================================
+# Runs on every PR to validate Bicep templates before merge.
+# This catches syntax errors and some semantic issues early.
+#
+# What it does:
+# 1. Checks out the code
+# 2. Runs 'az bicep build' to validate syntax
+# 3. Runs 'az deployment group validate' for deeper validation (optional)
+# ============================================================================
+
+name: Validate Bicep
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'infra/**'
+  push:
+    branches: [main]
+    paths:
+      - 'infra/**'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  validate:
+    name: Validate Bicep Templates
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Install Azure CLI (pre-installed on GitHub runners, but let's ensure latest)
+      - name: Azure CLI version
+        run: az version
+
+      # Step 3: Build/compile all Bicep files to validate syntax
+      # This catches:
+      # - Syntax errors
+      # - Missing module references
+      # - Invalid resource API versions
+      - name: Validate Bicep syntax
+        run: |
+          echo "🔍 Validating Bicep templates..."
+
+          # Find all .bicep files and validate each
+          for file in $(find infra -name "*.bicep" -type f); do
+            echo "  Validating: $file"
+            az bicep build --file "$file" --stdout > /dev/null
+            if [ $? -eq 0 ]; then
+              echo "    ✅ Valid"
+            else
+              echo "    ❌ Invalid"
+              exit 1
+            fi
+          done
+
+          echo ""
+          echo "✅ All Bicep templates are valid!"
+
+      # Step 4: Lint Bicep files (best practices check)
+      - name: Lint Bicep templates
+        run: |
+          echo "🔍 Linting Bicep templates..."
+
+          # Bicep linter runs automatically during build
+          # To see warnings, we need to check the output
+          az bicep build --file infra/main.bicep 2>&1 | tee bicep-output.txt
+
+          # Check for warnings (non-fatal but good to know)
+          if grep -q "Warning" bicep-output.txt; then
+            echo ""
+            echo "⚠️  Warnings found (non-blocking):"
+            grep "Warning" bicep-output.txt
+          fi
+
+          echo ""
+          echo "✅ Linting complete!"

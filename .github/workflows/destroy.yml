@@ -1,0 +1,178 @@
+# ============================================================================
+# Infrastructure Destruction Workflow
+# ============================================================================
+# Destroys all Azure resources to save costs.
+#
+# ⚠️  DANGER: This permanently deletes all resources and data!
+#
+# Safety features:
+# - Manual trigger only (never automatic)
+# - Requires explicit environment selection
+# - Requires typing confirmation phrase
+# - Shows what will be deleted before proceeding
+#
+# Use this when you're done playing with the project or want to start fresh.
+# ============================================================================
+
+name: Destroy Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to destroy'
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+      confirmation:
+        description: 'Type "destroy-{environment}" to confirm (e.g., "destroy-dev")'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  # --------------------------------------------------------------------------
+  # Job 1: Validate confirmation
+  # --------------------------------------------------------------------------
+  validate-confirmation:
+    name: Validate Confirmation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check confirmation phrase
+        run: |
+          expected="destroy-${{ github.event.inputs.environment }}"
+          actual="${{ github.event.inputs.confirmation }}"
+
+          echo "Expected: $expected"
+          echo "Provided: $actual"
+
+          if [ "$actual" != "$expected" ]; then
+            echo ""
+            echo "❌ Confirmation failed!"
+            echo "   You must type exactly: $expected"
+            exit 1
+          fi
+
+          echo ""
+          echo "✅ Confirmation validated"
+
+  # --------------------------------------------------------------------------
+  # Job 2: Preview what will be deleted
+  # --------------------------------------------------------------------------
+  preview:
+    name: Preview Deletion
+    runs-on: ubuntu-latest
+    needs: validate-confirmation
+
+    steps:
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: List Resources to Delete
+        run: |
+          rg="newsminds-${{ github.event.inputs.environment }}-rg"
+
+          echo "🔍 Resources in resource group: $rg"
+          echo ""
+
+          # Check if resource group exists
+          if ! az group exists --name "$rg" | grep -q true; then
+            echo "⚠️  Resource group '$rg' does not exist. Nothing to delete."
+            exit 0
+          fi
+
+          # List all resources
+          echo "The following resources will be PERMANENTLY DELETED:"
+          echo ""
+          az resource list \
+            --resource-group "$rg" \
+            --output table
+
+          echo ""
+          echo "⚠️  This action is IRREVERSIBLE!"
+
+  # --------------------------------------------------------------------------
+  # Job 3: Destroy resources
+  # --------------------------------------------------------------------------
+  destroy:
+    name: Destroy ${{ github.event.inputs.environment }}
+    runs-on: ubuntu-latest
+    needs: [validate-confirmation, preview]
+    environment:
+      name: ${{ github.event.inputs.environment }}-destroy
+
+    steps:
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Delete Resource Group
+        run: |
+          rg="newsminds-${{ github.event.inputs.environment }}-rg"
+
+          echo "🗑️  Deleting resource group: $rg"
+          echo ""
+
+          # Check if exists
+          if ! az group exists --name "$rg" | grep -q true; then
+            echo "Resource group does not exist. Nothing to delete."
+            exit 0
+          fi
+
+          # Delete the entire resource group (and all resources in it)
+          # --yes skips confirmation (we already confirmed via workflow input)
+          # --no-wait returns immediately (deletion happens in background)
+          az group delete \
+            --name "$rg" \
+            --yes \
+            --no-wait
+
+          echo ""
+          echo "✅ Resource group deletion initiated!"
+          echo "   Note: Deletion happens asynchronously and may take several minutes."
+          echo ""
+          echo "   To check status:"
+          echo "   az group show --name $rg --query properties.provisioningState"
+
+      - name: Destruction Summary
+        run: |
+          echo "## 🗑️ Destruction Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | \`${{ github.event.inputs.environment }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Resource Group | \`newsminds-${{ github.event.inputs.environment }}-rg\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Status | Deletion initiated (async) |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **Note:** Deletion may take several minutes to complete." >> $GITHUB_STEP_SUMMARY
+
+      # Optional: Purge Key Vault (if soft-delete is enabled)
+      - name: Purge Soft-Deleted Key Vault
+        continue-on-error: true  # Don't fail if Key Vault doesn't exist
+        run: |
+          kv_name="newsminds${{ github.event.inputs.environment }}kv"
+
+          echo "🔑 Checking for soft-deleted Key Vault: $kv_name"
+
+          # Check if Key Vault is in soft-deleted state
+          deleted_vaults=$(az keyvault list-deleted --query "[?name=='$kv_name'].name" -o tsv)
+
+          if [ -n "$deleted_vaults" ]; then
+            echo "   Purging soft-deleted Key Vault..."
+            az keyvault purge --name "$kv_name" --no-wait || true
+            echo "   ✅ Purge initiated"
+          else
+            echo "   No soft-deleted Key Vault found"
+          fi

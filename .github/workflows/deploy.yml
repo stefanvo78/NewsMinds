@@ -105,6 +105,9 @@ jobs:
 
       # What-If shows what would change without actually changing anything
       - name: What-If Preview
+        env:
+          POSTGRES_LOGIN: ${{ secrets.POSTGRES_ADMIN_LOGIN }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
         run: |
           echo "🔍 Previewing changes for ${{ env.ENVIRONMENT }} environment..."
           echo ""
@@ -113,8 +116,8 @@ jobs:
             --resource-group "newsminds-${{ env.ENVIRONMENT }}-rg" \
             --template-file infra/main.bicep \
             --parameters infra/environments/${{ env.ENVIRONMENT }}.bicepparam \
-            --parameters postgresAdminLogin=${{ secrets.POSTGRES_ADMIN_LOGIN }} \
-            --parameters postgresAdminPassword=${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+            --parameters postgresAdminLogin="$POSTGRES_LOGIN" \
+            --parameters postgresAdminPassword="$POSTGRES_PASSWORD"
 
   # --------------------------------------------------------------------------
   # Job 3: Deploy Infrastructure
@@ -155,6 +158,9 @@ jobs:
 
       - name: Deploy Infrastructure
         id: deploy
+        env:
+          POSTGRES_LOGIN: ${{ secrets.POSTGRES_ADMIN_LOGIN }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
         run: |
           echo "🚀 Deploying to ${{ env.ENVIRONMENT }}..."
           echo ""
@@ -164,8 +170,8 @@ jobs:
             --resource-group "newsminds-${{ env.ENVIRONMENT }}-rg" \
             --template-file infra/main.bicep \
             --parameters infra/environments/${{ env.ENVIRONMENT }}.bicepparam \
-            --parameters postgresAdminLogin=${{ secrets.POSTGRES_ADMIN_LOGIN }} \
-            --parameters postgresAdminPassword=${{ secrets.POSTGRES_ADMIN_PASSWORD }} \
+            --parameters postgresAdminLogin="$POSTGRES_LOGIN" \
+            --parameters postgresAdminPassword="$POSTGRES_PASSWORD" \
             --name "newsminds-${{ env.ENVIRONMENT }}-$(date +%Y%m%d-%H%M%S)" \
             --query properties.outputs \
             --output json)

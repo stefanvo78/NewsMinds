@@ -77,11 +77,8 @@ resource redisCache 'Microsoft.Cache/redis@2023-08-01' = {
     minimumTlsVersion: minimumTlsVersion
 
     // Redis configuration
+    // NOTE: Some settings (like notify-keyspace-events) require Standard/Premium tier
     redisConfiguration: {
-      // Enable keyspace notifications for pub/sub
-      // 'AKE' = All keyspace events, key events, eviction events
-      'notify-keyspace-events': 'AKE'
-
       // Max memory policy: what happens when cache is full
       // volatile-lru: Evict keys with TTL using LRU
       'maxmemory-policy': 'volatile-lru'

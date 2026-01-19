@@ -144,23 +144,12 @@ resource appService 'Microsoft.Web/sites@2023-12-01' = {
   }
 }
 
-// Reference the Key Vault to grant access
-resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
-  name: keyVaultName
-}
-
-// Grant the App Service access to Key Vault secrets
-// Uses RBAC role assignment (Key Vault Secrets User)
-resource keyVaultAccessPolicy 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(keyVault.id, appService.id, 'Key Vault Secrets User')
-  scope: keyVault
-  properties: {
-    // Key Vault Secrets User role - allows reading secrets
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
-    principalId: appService.identity.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
+// NOTE: RBAC role assignment for Key Vault access requires 'User Access Administrator'
+// or 'Owner' role on the service principal. For initial deployment, grant access manually:
+//   az role assignment create \
+//     --assignee <app-service-principal-id> \
+//     --role "Key Vault Secrets User" \
+//     --scope <key-vault-resource-id>
 
 // Configure logging
 resource appServiceLogs 'Microsoft.Web/sites/config@2023-12-01' = {

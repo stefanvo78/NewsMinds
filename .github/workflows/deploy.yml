@@ -99,7 +99,7 @@ jobs:
       - name: Create Resource Group (if needed)
         run: |
           az group create \
-            --name "newsminds-${{ env.ENVIRONMENT }}-rg" \
+            --name "newsminds2-${{ env.ENVIRONMENT }}-rg" \
             --location "northeurope" \
             --tags Environment=${{ env.ENVIRONMENT }} Project=NewsMinds
 
@@ -113,7 +113,7 @@ jobs:
           echo ""
 
           az deployment group what-if \
-            --resource-group "newsminds-${{ env.ENVIRONMENT }}-rg" \
+            --resource-group "newsminds2-${{ env.ENVIRONMENT }}-rg" \
             --template-file infra/main.bicep \
             --parameters infra/environments/${{ env.ENVIRONMENT }}.bicepparam \
             --parameters postgresAdminLogin="$POSTGRES_LOGIN" \
@@ -152,7 +152,7 @@ jobs:
       - name: Create Resource Group
         run: |
           az group create \
-            --name "newsminds-${{ env.ENVIRONMENT }}-rg" \
+            --name "newsminds2-${{ env.ENVIRONMENT }}-rg" \
             --location "northeurope" \
             --tags Environment=${{ env.ENVIRONMENT }} Project=NewsMinds ManagedBy=GitHubActions
 
@@ -167,7 +167,7 @@ jobs:
 
           # Deploy with Bicep
           deployment_output=$(az deployment group create \
-            --resource-group "newsminds-${{ env.ENVIRONMENT }}-rg" \
+            --resource-group "newsminds2-${{ env.ENVIRONMENT }}-rg" \
             --template-file infra/main.bicep \
             --parameters infra/environments/${{ env.ENVIRONMENT }}.bicepparam \
             --parameters postgresAdminLogin="$POSTGRES_LOGIN" \
@@ -199,6 +199,6 @@ jobs:
           echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| Environment | \`${{ env.ENVIRONMENT }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Resource Group | \`newsminds-${{ env.ENVIRONMENT }}-rg\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Resource Group | \`newsminds2-${{ env.ENVIRONMENT }}-rg\` |" >> $GITHUB_STEP_SUMMARY
           echo "| API URL | ${{ steps.deploy.outputs.api_url }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Key Vault | \`${{ steps.deploy.outputs.keyvault_name }}\` |" >> $GITHUB_STEP_SUMMARY

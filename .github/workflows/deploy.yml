@@ -15,8 +15,8 @@
 # - AZURE_CLIENT_ID: App registration client ID
 # - AZURE_TENANT_ID: Azure AD tenant ID
 # - AZURE_SUBSCRIPTION_ID: Azure subscription ID
-# - POSTGRES_ADMIN_LOGIN: PostgreSQL admin username
-# - POSTGRES_ADMIN_PASSWORD: PostgreSQL admin password
+# - SQL_ADMIN_LOGIN: SQL Server admin username
+# - SQL_ADMIN_PASSWORD: SQL Server admin password
 # ============================================================================
 
 name: Deploy Infrastructure
@@ -106,8 +106,8 @@ jobs:
       # What-If shows what would change without actually changing anything
       - name: What-If Preview
         env:
-          POSTGRES_LOGIN: ${{ secrets.POSTGRES_ADMIN_LOGIN }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+          SQL_LOGIN: ${{ secrets.SQL_ADMIN_LOGIN }}
+          SQL_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
         run: |
           echo "🔍 Previewing changes for ${{ env.ENVIRONMENT }} environment..."
           echo ""
@@ -116,8 +116,8 @@ jobs:
             --resource-group "nminds-${{ env.ENVIRONMENT }}-rg" \
             --template-file infra/main.bicep \
             --parameters infra/environments/${{ env.ENVIRONMENT }}.bicepparam \
-            --parameters postgresAdminLogin="$POSTGRES_LOGIN" \
-            --parameters postgresAdminPassword="$POSTGRES_PASSWORD"
+            --parameters sqlAdminLogin="$SQL_LOGIN" \
+            --parameters sqlAdminPassword="$SQL_PASSWORD"
 
   # --------------------------------------------------------------------------
   # Job 3: Deploy Infrastructure
@@ -159,8 +159,8 @@ jobs:
       - name: Deploy Infrastructure
         id: deploy
         env:
-          POSTGRES_LOGIN: ${{ secrets.POSTGRES_ADMIN_LOGIN }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+          SQL_LOGIN: ${{ secrets.SQL_ADMIN_LOGIN }}
+          SQL_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
         run: |
           echo "🚀 Deploying to ${{ env.ENVIRONMENT }}..."
           echo ""
@@ -170,8 +170,8 @@ jobs:
             --resource-group "nminds-${{ env.ENVIRONMENT }}-rg" \
             --template-file infra/main.bicep \
             --parameters infra/environments/${{ env.ENVIRONMENT }}.bicepparam \
-            --parameters postgresAdminLogin="$POSTGRES_LOGIN" \
-            --parameters postgresAdminPassword="$POSTGRES_PASSWORD" \
+            --parameters sqlAdminLogin="$SQL_LOGIN" \
+            --parameters sqlAdminPassword="$SQL_PASSWORD" \
             --name "nminds-${{ env.ENVIRONMENT }}-$(date +%Y%m%d-%H%M%S)" \
             --query properties.outputs \
             --output json)

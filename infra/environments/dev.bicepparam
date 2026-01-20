@@ -28,11 +28,11 @@ param location = 'eastus2'
 // Project name for resource naming
 param projectName = 'nminds'
 
-// PostgreSQL credentials - NEVER commit real passwords!
+// SQL Server credentials - NEVER commit real passwords!
 // These are placeholders - pass real values via CLI or Key Vault
-// Use: --parameters postgresAdminLogin=xxx postgresAdminPassword=xxx
-param postgresAdminLogin = ''  // Will be provided at deployment
-param postgresAdminPassword = ''  // Will be provided at deployment
+// Use: --parameters sqlAdminLogin=xxx sqlAdminPassword=xxx
+param sqlAdminLogin = ''  // Will be provided at deployment
+param sqlAdminPassword = ''  // Will be provided at deployment
 
 // Resource tags for organization and cost tracking
 param tags = {

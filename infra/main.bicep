@@ -28,13 +28,13 @@ param location string = 'westus2'
 @description('Base name for all resources')
 param projectName string = 'newsminds'
 
-@description('PostgreSQL administrator login username')
+@description('SQL Server administrator login username')
 @secure()
-param postgresAdminLogin string
+param sqlAdminLogin string
 
-@description('PostgreSQL administrator password')
+@description('SQL Server administrator password')
 @secure()
-param postgresAdminPassword string
+param sqlAdminPassword string
 
 @description('Tags to apply to all resources')
 param tags object = {}
@@ -109,19 +109,19 @@ module appInsights 'modules/app-insights.bicep' = {
   }
 }
 
-// --- PostgreSQL Flexible Server ---
+// --- Azure SQL Database ---
 // Primary relational database for structured data:
 // - User data, sessions
 // - News article metadata
 // - Agent task history
-module postgresql 'modules/postgresql.bicep' = {
-  name: 'postgresql-deployment'
+module sqlDatabase 'modules/sql-database.bicep' = {
+  name: 'sqlDatabase-deployment'
   params: {
-    name: '${resourcePrefix}-psql'
+    serverName: '${resourcePrefix}-sql'
     location: location
     tags: allTags
-    administratorLogin: postgresAdminLogin
-    administratorPassword: postgresAdminPassword
+    administratorLogin: sqlAdminLogin
+    administratorPassword: sqlAdminPassword
     // Store connection string in Key Vault
     keyVaultName: keyVault.outputs.name
   }
@@ -189,8 +189,8 @@ output keyVaultUri string = keyVault.outputs.uri
 @description('Application Insights connection string')
 output appInsightsConnectionString string = appInsights.outputs.connectionString
 
-@description('PostgreSQL server FQDN')
-output postgresqlFqdn string = postgresql.outputs.fqdn
+@description('SQL Server FQDN')
+output sqlServerFqdn string = sqlDatabase.outputs.fqdn
 
 @description('Redis hostname')
 output redisHostname string = redis.outputs.hostname

@@ -22,8 +22,8 @@ using '../main.bicep'
 // Environment identifier
 param environment = 'dev'
 
-// Azure region - using eastus (PostgreSQL Flexible Server available here)
-param location = 'eastus'
+// Azure region - using northeurope (PostgreSQL and App Service available here)
+param location = 'northeurope'
 
 // Project name for resource naming
 param projectName = 'newsminds'

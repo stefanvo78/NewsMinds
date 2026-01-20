@@ -100,7 +100,7 @@ jobs:
         run: |
           az group create \
             --name "newsminds-${{ env.ENVIRONMENT }}-rg" \
-            --location "eastus" \
+            --location "northeurope" \
             --tags Environment=${{ env.ENVIRONMENT }} Project=NewsMinds
 
       # What-If shows what would change without actually changing anything
@@ -153,7 +153,7 @@ jobs:
         run: |
           az group create \
             --name "newsminds-${{ env.ENVIRONMENT }}-rg" \
-            --location "eastus" \
+            --location "northeurope" \
             --tags Environment=${{ env.ENVIRONMENT }} Project=NewsMinds ManagedBy=GitHubActions
 
       - name: Deploy Infrastructure

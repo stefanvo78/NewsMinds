@@ -23,7 +23,7 @@ using '../main.bicep'
 param environment = 'dev'
 
 // Azure region
-param location = 'westus2'
+param location = 'eastus2'
 
 // Project name for resource naming
 param projectName = 'nmdev'

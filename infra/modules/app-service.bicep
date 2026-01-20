@@ -30,8 +30,8 @@ param location string
 param tags object = {}
 
 @description('App Service Plan SKU')
-@allowed(['B1', 'B2', 'B3', 'S1', 'S2', 'S3', 'P1v3', 'P2v3', 'P3v3'])
-param skuName string = 'B1'  // Basic tier: ~$13/month
+@allowed(['F1', 'B1', 'B2', 'B3', 'S1', 'S2', 'S3', 'P1v3', 'P2v3', 'P3v3'])
+param skuName string = 'F1'  // Free tier for dev (no Basic VM quota required)
 
 @description('Python version')
 @allowed(['3.10', '3.11', '3.12'])

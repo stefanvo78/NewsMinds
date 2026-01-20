@@ -26,7 +26,7 @@ param environment = 'dev'
 param location = 'northeurope'
 
 // Project name for resource naming
-param projectName = 'newsminds2'
+param projectName = 'newsminds'
 
 // PostgreSQL credentials - NEVER commit real passwords!
 // These are placeholders - pass real values via CLI or Key Vault

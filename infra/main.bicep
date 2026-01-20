@@ -157,17 +157,17 @@ module containerAppsEnv 'modules/container-apps-env.bicep' = {
   }
 }
 
-// --- App Service (FastAPI API) ---
-// Hosts our FastAPI backend
-// Linux-based with Python runtime
-module appService 'modules/app-service.bicep' = {
-  name: 'appService-deployment'
+// --- Container App (FastAPI API) ---
+// Hosts our FastAPI backend as a Container App
+// Uses consumption plan - no VM quota required
+module apiContainerApp 'modules/container-app-api.bicep' = {
+  name: 'apiContainerApp-deployment'
   params: {
     name: '${resourcePrefix}-api'
     location: location
     tags: allTags
+    containerAppsEnvId: containerAppsEnv.outputs.id
     appInsightsConnectionString: appInsights.outputs.connectionString
-    appInsightsInstrumentationKey: appInsights.outputs.instrumentationKey
     keyVaultName: keyVault.outputs.name
   }
 }
@@ -198,5 +198,5 @@ output redisHostname string = redis.outputs.hostname
 @description('Container Apps Environment ID')
 output containerAppsEnvId string = containerAppsEnv.outputs.id
 
-@description('App Service default hostname')
-output apiHostname string = appService.outputs.defaultHostname
+@description('API Container App FQDN')
+output apiHostname string = apiContainerApp.outputs.fqdn

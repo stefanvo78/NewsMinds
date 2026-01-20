@@ -26,7 +26,7 @@ param environment = 'dev'
 param location = 'eastus2'
 
 // Project name for resource naming
-param projectName = 'nmdev'
+param projectName = 'nminds'
 
 // PostgreSQL credentials - NEVER commit real passwords!
 // These are placeholders - pass real values via CLI or Key Vault

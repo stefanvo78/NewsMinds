@@ -22,11 +22,11 @@ using '../main.bicep'
 // Environment identifier
 param environment = 'dev'
 
-// Azure region - using northeurope (PostgreSQL and App Service available here)
-param location = 'northeurope'
+// Azure region
+param location = 'westus2'
 
 // Project name for resource naming
-param projectName = 'newsminds'
+param projectName = 'nmdev'
 
 // PostgreSQL credentials - NEVER commit real passwords!
 // These are placeholders - pass real values via CLI or Key Vault

@@ -198,16 +198,7 @@ module apiContainerApp 'modules/container-app-api.bicep' = {
 
 // --- RBAC: Allow Container App to pull from ACR ---
 // The Container App needs AcrPull role to pull images using managed identity
-resource acrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(containerRegistry.outputs.id, apiContainerApp.outputs.principalId, 'acrpull')
-  scope: resourceGroup()
-  properties: {
-    // AcrPull built-in role ID
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
-    principalId: apiContainerApp.outputs.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
+// Note: We move this to the container-app-api module to avoid circular dependency issues
 
 
 

@@ -219,6 +219,19 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   }
 }
 
+// --- RBAC: Allow Container App to pull from ACR ---
+// The Container App needs AcrPull role to pull images using managed identity
+// AcrPull role ID: 7f951dda-4ed3-4680-a7ca-43fe172d538d
+resource acrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (acrName != '') {
+  name: guid(resourceGroup().id, name, acrName, 'acrpull')
+  scope: resourceGroup()
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
+    principalId: containerApp.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 // ----------------------------------------------------------------------------
 // OUTPUTS
 // ----------------------------------------------------------------------------

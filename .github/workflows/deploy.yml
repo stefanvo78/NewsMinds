@@ -255,6 +255,30 @@ jobs:
           echo "acr_login_server=$acr_login_server" >> $GITHUB_OUTPUT
           echo "image_tag=$acr_login_server/newsminds-api:${{ github.sha }}" >> $GITHUB_OUTPUT
 
+      # Grant Container App permission to pull from ACR
+      - name: Grant ACR Pull Permission
+        run: |
+          echo "🔐 Granting ACR pull permission to Container App..."
+
+          # Get Container App's managed identity principal ID
+          principal_id=$(az containerapp show \
+            --name "nminds-${{ env.ENVIRONMENT }}-api" \
+            --resource-group "nminds-${{ env.ENVIRONMENT }}-rg" \
+            --query identity.principalId \
+            --output tsv)
+
+          # Get ACR resource ID
+          acr_id=$(az acr show \
+            --name ${{ steps.infra.outputs.acr_name }} \
+            --query id \
+            --output tsv)
+
+          # Assign AcrPull role (ignore error if already exists)
+          az role assignment create \
+            --assignee "$principal_id" \
+            --role "AcrPull" \
+            --scope "$acr_id" 2>/dev/null || echo "Role assignment already exists or insufficient permissions"
+
       # Login to Azure Container Registry
       - name: Login to ACR
         run: az acr login --name ${{ steps.infra.outputs.acr_name }}

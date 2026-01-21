@@ -188,12 +188,13 @@ data/processed/
 !data/.gitkeep
 
 # ----------------------------------------------------------------------------
-# Model artifacts (large files)
+# ML Model artifacts (large files)
 # ----------------------------------------------------------------------------
 *.pt
 *.pth
 *.onnx
 *.h5
 *.hdf5
-models/
-!models/.gitkeep
+# ML models directory (not SQLAlchemy models)
+/models/
+!/models/.gitkeep

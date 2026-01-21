@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.api.core.config import settings
 from src.api.core.database import engine
 from src.api.models import Base
-from src.api.routers import auth, users
+from src.api.routers import auth, users, sources, articles
 
 
 @asynccontextmanager
@@ -67,6 +67,8 @@ app.add_middleware(
 # Include routers with API version prefix
 app.include_router(auth.router, prefix=settings.API_V1_PREFIX)
 app.include_router(users.router, prefix=settings.API_V1_PREFIX)
+app.include_router(sources.router, prefix=settings.API_V1_PREFIX)
+app.include_router(articles.router, prefix=settings.API_V1_PREFIX)
 
 
 # Health check endpoint (no auth required)

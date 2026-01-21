@@ -33,6 +33,25 @@ param appInsightsConnectionString string
 @description('Key Vault name for secret references')
 param keyVaultName string
 
+@description('Container Registry login server (e.g., myregistry.azurecr.io)')
+param acrLoginServer string = ''
+
+@description('Container Registry name for managed identity access')
+param acrName string = ''
+
+@description('Container image to deploy (defaults to placeholder if not provided)')
+param containerImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+
+@description('Database connection string (for Azure SQL)')
+@secure()
+param databaseUrl string = ''
+
+@description('JWT secret key')
+@secure()
+param secretKey string = ''
+
+
+
 @description('Minimum number of replicas')
 @minValue(0)
 @maxValue(30)
@@ -86,11 +105,26 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           name: 'appinsights-connection-string'
           value: appInsightsConnectionString
         }
+        {
+          name: 'database-url'
+          value: databaseUrl
+        }
+        {
+          name: 'secret-key'
+          value: secretKey
+        }
       ]
 
+
       // Container registry configuration
-      // Using the quickstart image initially - will be replaced with our image
-      registries: []
+      // Using managed identity to pull images from ACR
+      registries: acrLoginServer != '' ? [
+        {
+          server: acrLoginServer
+          identity: 'system'  // Use system-assigned managed identity
+        }
+      ] : []
+
     }
 
     // Container template
@@ -100,7 +134,8 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           name: 'api'
           // Using a placeholder Python image initially
           // This will be replaced when we deploy our actual FastAPI app
-          image: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+          image: containerImage
+
 
           resources: {
             cpu: json('0.5')  // 0.5 vCPU
@@ -125,7 +160,20 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
               name: 'PORT'
               value: '8000'
             }
+            {
+              name: 'DATABASE_URL'
+              secretRef: 'database-url'
+            }
+            {
+              name: 'SECRET_KEY'
+              secretRef: 'secret-key'
+            }
+            {
+              name: 'DEBUG'
+              value: 'false'
+            }
           ]
+
 
           // Health probes
           probes: [

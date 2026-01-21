@@ -17,6 +17,7 @@
 # - AZURE_SUBSCRIPTION_ID: Azure subscription ID
 # - SQL_ADMIN_LOGIN: SQL Server admin username
 # - SQL_ADMIN_PASSWORD: SQL Server admin password
+# - SECRET_KEY: JWT secret key for authentication
 # ============================================================================
 
 name: Deploy Infrastructure
@@ -108,6 +109,7 @@ jobs:
         env:
           SQL_LOGIN: ${{ secrets.SQL_ADMIN_LOGIN }}
           SQL_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
         run: |
           echo "🔍 Previewing changes for ${{ env.ENVIRONMENT }} environment..."
           echo ""
@@ -117,7 +119,9 @@ jobs:
             --template-file infra/main.bicep \
             --parameters infra/environments/${{ env.ENVIRONMENT }}.bicepparam \
             --parameters sqlAdminLogin="$SQL_LOGIN" \
-            --parameters sqlAdminPassword="$SQL_PASSWORD"
+            --parameters sqlAdminPassword="$SQL_PASSWORD" \
+            --parameters secretKey="$SECRET_KEY"
+
 
   # --------------------------------------------------------------------------
   # Job 3: Deploy Infrastructure
@@ -161,6 +165,7 @@ jobs:
         env:
           SQL_LOGIN: ${{ secrets.SQL_ADMIN_LOGIN }}
           SQL_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
         run: |
           echo "🚀 Deploying to ${{ env.ENVIRONMENT }}..."
           echo ""
@@ -172,6 +177,7 @@ jobs:
             --parameters infra/environments/${{ env.ENVIRONMENT }}.bicepparam \
             --parameters sqlAdminLogin="$SQL_LOGIN" \
             --parameters sqlAdminPassword="$SQL_PASSWORD" \
+            --parameters secretKey="$SECRET_KEY" \
             --name "nminds-${{ env.ENVIRONMENT }}-$(date +%Y%m%d-%H%M%S)" \
             --query properties.outputs \
             --output json)
@@ -202,3 +208,89 @@ jobs:
           echo "| Resource Group | \`nminds-${{ env.ENVIRONMENT }}-rg\` |" >> $GITHUB_STEP_SUMMARY
           echo "| API URL | ${{ steps.deploy.outputs.api_url }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Key Vault | \`${{ steps.deploy.outputs.keyvault_name }}\` |" >> $GITHUB_STEP_SUMMARY
+
+  # --------------------------------------------------------------------------
+  # Job 4: Build and Deploy Application
+  # --------------------------------------------------------------------------
+  build-and-deploy-app:
+    name: Build & Deploy App
+    runs-on: ubuntu-latest
+    needs: deploy
+    # Only run if infrastructure deployment succeeded
+    if: ${{ needs.deploy.result == 'success' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Get ACR details from the deployed infrastructure
+      - name: Get Infrastructure Outputs
+        id: infra
+        run: |
+          # Get the latest deployment outputs
+          outputs=$(az deployment group show \
+            --resource-group "nminds-${{ env.ENVIRONMENT }}-rg" \
+            --name "$(az deployment group list --resource-group nminds-${{ env.ENVIRONMENT }}-rg --query '[0].name' -o tsv)" \
+            --query properties.outputs \
+            --output json 2>/dev/null || echo '{}')
+          
+          # Extract values
+          acr_name=$(echo "$outputs" | jq -r '.acrName.value // empty')
+          acr_login_server=$(echo "$outputs" | jq -r '.acrLoginServer.value // empty')
+          
+          # Fallback to constructed names if outputs not available
+          if [ -z "$acr_name" ]; then
+            acr_name="nminds${{ env.ENVIRONMENT }}acr"
+            acr_login_server="${acr_name}.azurecr.io"
+          fi
+          
+          echo "acr_name=$acr_name" >> $GITHUB_OUTPUT
+          echo "acr_login_server=$acr_login_server" >> $GITHUB_OUTPUT
+          echo "image_tag=$acr_login_server/newsminds-api:${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      # Login to Azure Container Registry
+      - name: Login to ACR
+        run: az acr login --name ${{ steps.infra.outputs.acr_name }}
+
+      # Build and push Docker image
+      - name: Build and Push Docker Image
+        run: |
+          echo "🐳 Building Docker image..."
+          docker build -t ${{ steps.infra.outputs.image_tag }} .
+          
+          echo "📤 Pushing to ACR..."
+          docker push ${{ steps.infra.outputs.image_tag }}
+          
+          echo "✅ Image pushed: ${{ steps.infra.outputs.image_tag }}"
+
+      # Update Container App with new image
+      - name: Deploy to Container App
+        run: |
+          echo "🚀 Deploying to Container App..."
+          
+          az containerapp update \
+            --name "nminds-${{ env.ENVIRONMENT }}-api" \
+            --resource-group "nminds-${{ env.ENVIRONMENT }}-rg" \
+            --image ${{ steps.infra.outputs.image_tag }} \
+            --set-env-vars \
+              "DATABASE_URL=secretref:database-url" \
+              "SECRET_KEY=secretref:secret-key" \
+              "DEBUG=false"
+          
+          echo "✅ Deployment complete!"
+
+      - name: Deployment Summary
+        run: |
+          echo "## 🐳 Application Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Image | \`${{ steps.infra.outputs.image_tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Container App | \`nminds-${{ env.ENVIRONMENT }}-api\` |" >> $GITHUB_STEP_SUMMARY

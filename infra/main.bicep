@@ -36,6 +36,11 @@ param sqlAdminLogin string
 @secure()
 param sqlAdminPassword string
 
+@description('JWT secret key for authentication')
+@secure()
+param secretKey string
+
+
 @description('Tags to apply to all resources')
 param tags object = {}
 
@@ -83,6 +88,19 @@ module keyVault 'modules/key-vault.bicep' = {
     tags: allTags
   }
 }
+
+// --- Container Registry ---
+// Private Docker registry for our container images
+// GitHub Actions will push images here, Container Apps will pull from here
+module containerRegistry 'modules/container-registry.bicep' = {
+  name: 'containerRegistry-deployment'
+  params: {
+    name: '${resourcePrefixNoHyphens}acr'  // ACR names: alphanumeric only
+    location: location
+    tags: allTags
+  }
+}
+
 
 // --- Log Analytics Workspace ---
 // Central logging destination for all resources
@@ -169,8 +187,29 @@ module apiContainerApp 'modules/container-app-api.bicep' = {
     containerAppsEnvId: containerAppsEnv.outputs.id
     appInsightsConnectionString: appInsights.outputs.connectionString
     keyVaultName: keyVault.outputs.name
+    acrLoginServer: containerRegistry.outputs.loginServer
+    acrName: containerRegistry.outputs.name
+    // Pass secrets for the application
+    databaseUrl: 'mssql+aioodbc://${sqlAdminLogin}:${sqlAdminPassword}@${sqlDatabase.outputs.fqdn}:1433/newsminds?driver=ODBC+Driver+18+for+SQL+Server&encrypt=yes&TrustServerCertificate=no'
+    secretKey: secretKey
   }
 }
+
+
+// --- RBAC: Allow Container App to pull from ACR ---
+// The Container App needs AcrPull role to pull images using managed identity
+resource acrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(containerRegistry.outputs.id, apiContainerApp.outputs.principalId, 'acrpull')
+  scope: resourceGroup()
+  properties: {
+    // AcrPull built-in role ID
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
+    principalId: apiContainerApp.outputs.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+
 
 // ----------------------------------------------------------------------------
 // OUTPUTS
@@ -200,3 +239,10 @@ output containerAppsEnvId string = containerAppsEnv.outputs.id
 
 @description('API Container App FQDN')
 output apiHostname string = apiContainerApp.outputs.fqdn
+
+@description('Container Registry login server')
+output acrLoginServer string = containerRegistry.outputs.loginServer
+
+@description('Container Registry name')
+output acrName string = containerRegistry.outputs.name
+

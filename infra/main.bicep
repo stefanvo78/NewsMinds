@@ -178,6 +178,7 @@ module containerAppsEnv 'modules/container-apps-env.bicep' = {
 // --- Container App (FastAPI API) ---
 // Hosts our FastAPI backend as a Container App
 // Uses consumption plan - no VM quota required
+// Note: ACR is NOT configured here - the workflow handles this after granting pull permission
 module apiContainerApp 'modules/container-app-api.bicep' = {
   name: 'apiContainerApp-deployment'
   params: {
@@ -187,8 +188,8 @@ module apiContainerApp 'modules/container-app-api.bicep' = {
     containerAppsEnvId: containerAppsEnv.outputs.id
     appInsightsConnectionString: appInsights.outputs.connectionString
     keyVaultName: keyVault.outputs.name
-    acrLoginServer: containerRegistry.outputs.loginServer
-    acrName: containerRegistry.outputs.name
+    // ACR configuration is handled by the workflow after role assignment
+    // acrLoginServer and acrName are intentionally omitted here
     // Pass secrets for the application
     databaseUrl: 'mssql+aioodbc://${sqlAdminLogin}:${sqlAdminPassword}@${sqlDatabase.outputs.fqdn}:1433/newsminds?driver=ODBC+Driver+18+for+SQL+Server&encrypt=yes&TrustServerCertificate=no'
     secretKey: secretKey

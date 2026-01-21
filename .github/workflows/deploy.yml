@@ -216,8 +216,8 @@ jobs:
     name: Build & Deploy App
     runs-on: ubuntu-latest
     needs: deploy
-    # Only run if infrastructure deployment succeeded
-    if: ${{ needs.deploy.result == 'success' }}
+    # Always evaluate, run only if infrastructure deployment succeeded
+    if: ${{ always() && needs.deploy.result == 'success' }}
 
     steps:
       - name: Checkout

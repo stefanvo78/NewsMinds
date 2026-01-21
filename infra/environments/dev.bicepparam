@@ -34,6 +34,9 @@ param projectName = 'nminds'
 param sqlAdminLogin = ''  // Will be provided at deployment
 param sqlAdminPassword = ''  // Will be provided at deployment
 
+// JWT secret key for authentication - provided via GitHub secrets
+param secretKey = ''  // Will be provided at deployment
+
 // Resource tags for organization and cost tracking
 param tags = {
   Environment: 'Development'

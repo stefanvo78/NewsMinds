@@ -294,11 +294,12 @@ jobs:
           
           echo "✅ Image pushed: ${{ steps.infra.outputs.image_tag }}"
 
-      # Configure Container App to use ACR with managed identity
-      - name: Configure ACR Registry
+      # Configure Container App to use ACR and deploy new image
+      - name: Deploy to Container App
         run: |
           echo "🔧 Configuring ACR registry for Container App..."
 
+          # First configure the registry
           az containerapp registry set \
             --name "nminds-${{ env.ENVIRONMENT }}-api" \
             --resource-group "nminds-${{ env.ENVIRONMENT }}-rg" \
@@ -306,11 +307,26 @@ jobs:
             --identity system
 
           echo "✅ ACR registry configured"
+          echo ""
+          echo "⏳ Waiting for registry configuration to complete..."
 
-      # Update Container App with new image
-      - name: Deploy to Container App
-        run: |
-          echo "🚀 Deploying to Container App..."
+          # Wait for the Container App to be ready
+          for i in {1..30}; do
+            state=$(az containerapp show \
+              --name "nminds-${{ env.ENVIRONMENT }}-api" \
+              --resource-group "nminds-${{ env.ENVIRONMENT }}-rg" \
+              --query "properties.provisioningState" \
+              --output tsv 2>/dev/null)
+            if [ "$state" = "Succeeded" ]; then
+              echo "✅ Container App is ready"
+              break
+            fi
+            echo "   Waiting... (attempt $i/30, state: $state)"
+            sleep 10
+          done
+
+          echo ""
+          echo "🚀 Deploying new image..."
 
           az containerapp update \
             --name "nminds-${{ env.ENVIRONMENT }}-api" \

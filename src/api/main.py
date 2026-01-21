@@ -15,7 +15,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.core.config import settings
 from src.api.core.database import engine
-from src.api.models import Base
 from src.api.routers import auth, users, sources, articles
 
 
@@ -23,20 +22,16 @@ from src.api.routers import auth, users, sources, articles
 async def lifespan(app: FastAPI):
     """
     Lifespan context manager for startup/shutdown events.
-    
-    - Startup: Initialize database connections, create tables
+
+    - Startup: Initialize connections
     - Shutdown: Close connections gracefully
+
+    Note: Database tables are managed by Alembic migrations.
+    Run 'alembic upgrade head' before starting the app.
     """
     # Startup
     print(f"Starting {settings.APP_NAME}...")
-    
-    # Create database tables
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    print("Database tables created.")
-    
     yield
-    
     # Shutdown
     print(f"Shutting down {settings.APP_NAME}...")
     await engine.dispose()

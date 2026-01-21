@@ -294,20 +294,29 @@ jobs:
           
           echo "✅ Image pushed: ${{ steps.infra.outputs.image_tag }}"
 
+      # Configure Container App to use ACR with managed identity
+      - name: Configure ACR Registry
+        run: |
+          echo "🔧 Configuring ACR registry for Container App..."
+
+          az containerapp registry set \
+            --name "nminds-${{ env.ENVIRONMENT }}-api" \
+            --resource-group "nminds-${{ env.ENVIRONMENT }}-rg" \
+            --server ${{ steps.infra.outputs.acr_login_server }} \
+            --identity system
+
+          echo "✅ ACR registry configured"
+
       # Update Container App with new image
       - name: Deploy to Container App
         run: |
           echo "🚀 Deploying to Container App..."
-          
+
           az containerapp update \
             --name "nminds-${{ env.ENVIRONMENT }}-api" \
             --resource-group "nminds-${{ env.ENVIRONMENT }}-rg" \
-            --image ${{ steps.infra.outputs.image_tag }} \
-            --set-env-vars \
-              "DATABASE_URL=secretref:database-url" \
-              "SECRET_KEY=secretref:secret-key" \
-              "DEBUG=false"
-          
+            --image ${{ steps.infra.outputs.image_tag }}
+
           echo "✅ Deployment complete!"
 
       - name: Deployment Summary

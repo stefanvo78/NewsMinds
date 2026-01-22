@@ -8,7 +8,7 @@ async def get_auth_token(client: AsyncClient, user_data: dict) -> str:
     """Helper to register a user and get auth token."""
     await client.post("/api/v1/auth/register", json=user_data)
     response = await client.post(
-        "/api/v1/auth/token",
+        "/api/v1/auth/login",
         data={
             "username": user_data["email"],
             "password": user_data["password"],
@@ -104,7 +104,7 @@ async def test_get_nonexistent_source(client: AsyncClient, test_user_data: dict)
     token = await get_auth_token(client, test_user_data)
 
     response = await client.get(
-        "/api/v1/sources/99999",
+        "/api/v1/sources/00000000-0000-0000-0000-000000000000",
         headers={"Authorization": f"Bearer {token}"},
     )
 

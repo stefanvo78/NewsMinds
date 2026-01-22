@@ -96,7 +96,7 @@ def test_user_data() -> dict:
     """Sample user data for tests."""
     return {
         "email": "test@example.com",
-        "username": "testuser",
+        "full_name": "Test User",
         "password": "TestPassword123!",
     }
 

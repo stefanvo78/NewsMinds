@@ -12,9 +12,9 @@ async def test_register_user(client: AsyncClient, test_user_data: dict):
     assert response.status_code == 201
     data = response.json()
     assert data["email"] == test_user_data["email"]
-    assert data["username"] == test_user_data["username"]
     assert "id" in data
     assert "password" not in data  # Password should not be returned
+    assert "hashed_password" not in data
 
 
 @pytest.mark.asyncio
@@ -38,7 +38,7 @@ async def test_login_success(client: AsyncClient, test_user_data: dict):
 
     # Login with form data (OAuth2 spec)
     response = await client.post(
-        "/api/v1/auth/token",
+        "/api/v1/auth/login",
         data={
             "username": test_user_data["email"],
             "password": test_user_data["password"],
@@ -59,7 +59,7 @@ async def test_login_wrong_password(client: AsyncClient, test_user_data: dict):
 
     # Try to login with wrong password
     response = await client.post(
-        "/api/v1/auth/token",
+        "/api/v1/auth/login",
         data={
             "username": test_user_data["email"],
             "password": "wrongpassword",
@@ -73,7 +73,7 @@ async def test_login_wrong_password(client: AsyncClient, test_user_data: dict):
 async def test_login_nonexistent_user(client: AsyncClient):
     """Test login with nonexistent user."""
     response = await client.post(
-        "/api/v1/auth/token",
+        "/api/v1/auth/login",
         data={
             "username": "nonexistent@example.com",
             "password": "anypassword",
@@ -89,7 +89,7 @@ async def test_get_current_user(client: AsyncClient, test_user_data: dict):
     # Register and login
     await client.post("/api/v1/auth/register", json=test_user_data)
     login_response = await client.post(
-        "/api/v1/auth/token",
+        "/api/v1/auth/login",
         data={
             "username": test_user_data["email"],
             "password": test_user_data["password"],
@@ -106,7 +106,6 @@ async def test_get_current_user(client: AsyncClient, test_user_data: dict):
     assert response.status_code == 200
     data = response.json()
     assert data["email"] == test_user_data["email"]
-    assert data["username"] == test_user_data["username"]
 
 
 @pytest.mark.asyncio

@@ -25,7 +25,7 @@ from src.api.core.config import settings
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,  # Log SQL statements when DEBUG=True
-    pool_pre_ping=True,   # Verify connections before using them
+    pool_pre_ping=True,  # Verify connections before using them
 )
 
 # Create a session factory
@@ -42,13 +42,13 @@ AsyncSessionLocal = async_sessionmaker(
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     Dependency that provides a database session.
-    
+
     Usage in FastAPI:
         @router.get("/items")
         async def get_items(db: AsyncSession = Depends(get_db)):
             result = await db.execute(select(Item))
             return result.scalars().all()
-    
+
     The session is automatically closed after the request completes.
     """
     async with AsyncSessionLocal() as session:

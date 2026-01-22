@@ -37,10 +37,10 @@ target_metadata = Base.metadata
 def run_migrations_offline() -> None:
     """
     Run migrations in 'offline' mode.
-    
+
     This generates SQL scripts without connecting to the database.
     Useful for reviewing changes or running in restricted environments.
-    
+
     Usage: alembic upgrade head --sql
     """
     url = config.get_main_option("sqlalchemy.url")
@@ -66,7 +66,7 @@ def do_run_migrations(connection: Connection) -> None:
 async def run_async_migrations() -> None:
     """
     Run migrations in 'online' mode with async support.
-    
+
     Creates an async engine and runs migrations within a connection.
     """
     connectable = async_engine_from_config(

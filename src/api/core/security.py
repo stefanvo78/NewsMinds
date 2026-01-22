@@ -26,10 +26,10 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 def hash_password(password: str) -> str:
     """
     Hash a plain text password.
-    
+
     Args:
         password: Plain text password from user input
-        
+
     Returns:
         Hashed password string (includes salt, algorithm info)
     """
@@ -39,11 +39,11 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     Verify a plain password against a hashed password.
-    
+
     Args:
         plain_password: Password from login attempt
         hashed_password: Stored hash from database
-        
+
     Returns:
         True if password matches, False otherwise
     """
@@ -58,11 +58,11 @@ ALGORITHM = "HS256"  # HMAC with SHA-256
 def create_access_token(subject: uuid.UUID, expires_delta: timedelta | None = None) -> str:
     """
     Create a JWT access token.
-    
+
     Args:
         subject: The user ID to encode in the token
         expires_delta: Optional custom expiration time
-        
+
     Returns:
         Encoded JWT string
     """
@@ -72,12 +72,12 @@ def create_access_token(subject: uuid.UUID, expires_delta: timedelta | None = No
         expire = datetime.now(timezone.utc) + timedelta(
             minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
-    
+
     to_encode: dict[str, Any] = {
         "sub": str(subject),  # Subject (user ID as string)
-        "exp": expire,        # Expiration time
+        "exp": expire,  # Expiration time
     }
-    
+
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -85,10 +85,10 @@ def create_access_token(subject: uuid.UUID, expires_delta: timedelta | None = No
 def decode_access_token(token: str) -> dict[str, Any] | None:
     """
     Decode and verify a JWT access token.
-    
+
     Args:
         token: The JWT string to decode
-        
+
     Returns:
         Decoded payload dict if valid, None if invalid/expired
     """

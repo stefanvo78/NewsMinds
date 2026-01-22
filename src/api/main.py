@@ -35,7 +35,6 @@ async def lifespan(app: FastAPI):
     # Shutdown
     print(f"Shutting down {settings.APP_NAME}...")
     await engine.dispose()
-    
 
 
 # Create the FastAPI application
@@ -71,7 +70,7 @@ app.include_router(articles.router, prefix=settings.API_V1_PREFIX)
 async def health_check():
     """
     Health check endpoint for load balancers and container orchestrators.
-    
+
     Returns 200 OK if the service is running.
     """
     return {"status": "healthy", "service": settings.APP_NAME}

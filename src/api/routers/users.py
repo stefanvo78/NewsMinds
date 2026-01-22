@@ -15,7 +15,7 @@ router = APIRouter(prefix="/users", tags=["Users"])
 async def get_current_user_profile(current_user: CurrentUser) -> CurrentUser:
     """
     Get the current authenticated user's profile.
-    
+
     Requires a valid JWT token in the Authorization header.
     """
     return current_user

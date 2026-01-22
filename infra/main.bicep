@@ -201,7 +201,20 @@ module apiContainerApp 'modules/container-app-api.bicep' = {
 // The Container App needs AcrPull role to pull images using managed identity
 // Note: We move this to the container-app-api module to avoid circular dependency issues
 
-
+// --- Monitoring Alerts ---
+// Set up alerts for error rates, response times, and container health
+module alerts 'modules/alerts.bicep' = {
+  name: 'alerts-deployment'
+  params: {
+    namePrefix: resourcePrefix
+    location: location
+    tags: allTags
+    appInsightsId: appInsights.outputs.id
+    containerAppId: apiContainerApp.outputs.id
+    // Add email addresses for notifications if needed
+    // alertEmailAddresses: ['your-email@example.com']
+  }
+}
 
 // ----------------------------------------------------------------------------
 // OUTPUTS

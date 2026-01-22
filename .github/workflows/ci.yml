@@ -1,0 +1,174 @@
+# ============================================================================
+# Continuous Integration Workflow
+# ============================================================================
+# Runs on every pull request and push to main.
+# Validates code quality, runs tests, and checks for security issues.
+# ============================================================================
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'requirements*.txt'
+      - 'pyproject.toml'
+      - '.github/workflows/ci.yml'
+
+# Cancel in-progress runs for the same PR
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # --------------------------------------------------------------------------
+  # Job 1: Code Quality Checks
+  # --------------------------------------------------------------------------
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          pip install ruff
+
+      - name: Check Formatting (ruff format)
+        run: ruff format --check .
+
+      - name: Lint (ruff check)
+        run: ruff check .
+
+  # --------------------------------------------------------------------------
+  # Job 2: Type Checking
+  # --------------------------------------------------------------------------
+  typecheck:
+    name: Type Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install mypy types-passlib
+
+      - name: Run MyPy
+        run: mypy src/ --ignore-missing-imports
+
+  # --------------------------------------------------------------------------
+  # Job 3: Unit Tests
+  # --------------------------------------------------------------------------
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov httpx
+
+      - name: Run Tests
+        env:
+          # Use SQLite for tests (in-memory)
+          DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+          SECRET_KEY: "test-secret-key-for-ci-only"
+        run: |
+          pytest tests/ -v --cov=src --cov-report=xml --cov-report=term-missing
+
+      - name: Upload Coverage
+        uses: codecov/codecov-action@v4
+        if: github.event_name == 'push'
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+
+  # --------------------------------------------------------------------------
+  # Job 4: Security Scan
+  # --------------------------------------------------------------------------
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          pip install bandit safety
+
+      - name: Run Bandit (Code Security)
+        run: bandit -r src/ -ll
+
+      - name: Check Dependencies (Safety)
+        run: safety check -r requirements.txt || true  # Don't fail on known issues
+
+  # --------------------------------------------------------------------------
+  # Job 5: Build Docker Image (Validation)
+  # --------------------------------------------------------------------------
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Docker Image
+        run: docker build -t newsminds-api:test .
+
+      - name: Test Docker Image Starts
+        run: |
+          # Start container with test database
+          docker run -d --name test-api \
+            -e DATABASE_URL="sqlite+aiosqlite:///:memory:" \
+            -e SECRET_KEY="test-secret" \
+            -p 8000:8000 \
+            newsminds-api:test
+
+          # Wait for startup
+          sleep 10
+
+          # Check health endpoint
+          curl -f http://localhost:8000/health || (docker logs test-api && exit 1)
+
+          # Cleanup
+          docker stop test-api

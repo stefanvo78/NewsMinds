@@ -304,6 +304,44 @@ jobs:
 
           echo "✅ Deployment complete!"
 
+      # Run database migrations
+      - name: Install ODBC Driver
+        run: |
+          curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
+          curl -fsSL https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
+          sudo apt-get update
+          sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run Database Migrations
+        env:
+          SQL_LOGIN: ${{ secrets.SQL_ADMIN_LOGIN }}
+          SQL_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
+        run: |
+          echo "🗄️ Running database migrations..."
+
+          # Get the SQL server FQDN
+          sql_fqdn=$(az sql server show \
+            --name "nminds-${{ env.ENVIRONMENT }}-sql" \
+            --resource-group "nminds-${{ env.ENVIRONMENT }}-rg" \
+            --query fullyQualifiedDomainName \
+            --output tsv)
+
+          # Install Python dependencies for migrations
+          pip install alembic sqlalchemy aioodbc pyodbc pydantic pydantic-settings
+
+          # Build the connection string for Alembic
+          export DATABASE_URL="mssql+aioodbc://${SQL_LOGIN}:${SQL_PASSWORD}@${sql_fqdn}:1433/newsminds?driver=ODBC+Driver+18+for+SQL+Server&encrypt=yes&TrustServerCertificate=no"
+
+          # Run migrations
+          alembic upgrade head
+
+          echo "✅ Migrations complete!"
+
       - name: Deployment Summary
         run: |
           echo "## 🐳 Application Deployment" >> $GITHUB_STEP_SUMMARY

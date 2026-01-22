@@ -3,7 +3,6 @@ Article management endpoints (CRUD).
 """
 
 import uuid
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, status, Query
 from sqlalchemy import select, func

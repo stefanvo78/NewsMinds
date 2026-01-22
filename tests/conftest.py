@@ -6,18 +6,16 @@ for all tests in the project.
 """
 
 import asyncio
-from typing import AsyncGenerator, Generator
+from collections.abc import AsyncGenerator, Generator
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from src.api.core.config import settings
 from src.api.core.database import get_db
 from src.api.main import app
 from src.api.models import Base
-
 
 # Use SQLite for tests (in-memory, fast)
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"

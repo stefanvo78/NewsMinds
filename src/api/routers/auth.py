@@ -5,7 +5,6 @@ Authentication endpoints: login, register.
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.core.deps import DbSession
 from src.api.core.security import hash_password, verify_password, create_access_token

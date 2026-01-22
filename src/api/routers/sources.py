@@ -3,10 +3,9 @@ Source management endpoints (CRUD).
 """
 
 import uuid
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException, status, Query
-from sqlalchemy import select, func
+from sqlalchemy import select
 
 from src.api.core.deps import DbSession, CurrentUser
 from src.api.models import Source
@@ -48,7 +47,7 @@ async def list_sources(
     """List all news sources with pagination."""
     query = select(Source)
     if active_only:
-        query = query.where(Source.is_active == True)
+        query = query.where(Source.is_active.is_(True))
     query = query.offset(skip).limit(limit)
 
     result = await db.execute(query)

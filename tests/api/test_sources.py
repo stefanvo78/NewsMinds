@@ -274,9 +274,7 @@ async def test_delete_nonexistent_source(client: AsyncClient, test_user_data: di
 
 
 @pytest.mark.asyncio
-async def test_list_sources_pagination(
-    client: AsyncClient, test_user_data: dict
-):
+async def test_list_sources_pagination(client: AsyncClient, test_user_data: dict):
     """Test listing sources with pagination parameters."""
     token = await get_auth_token(client, test_user_data)
 

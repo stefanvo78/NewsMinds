@@ -184,9 +184,7 @@ async def test_register_short_password(client: AsyncClient):
 async def test_token_contains_user_info(client: AsyncClient, test_user_data: dict):
     """Test that the JWT token can be used to get user info."""
     # Register
-    register_response = await client.post(
-        "/api/v1/auth/register", json=test_user_data
-    )
+    register_response = await client.post("/api/v1/auth/register", json=test_user_data)
     user_id = register_response.json()["id"]
 
     # Login

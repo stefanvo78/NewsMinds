@@ -140,3 +140,184 @@ async def test_delete_source(
         headers={"Authorization": f"Bearer {token}"},
     )
     assert get_response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_create_duplicate_source_name(
+    client: AsyncClient, test_user_data: dict, test_source_data: dict
+):
+    """Test creating source with duplicate name fails."""
+    token = await get_auth_token(client, test_user_data)
+
+    # Create first source
+    await client.post(
+        "/api/v1/sources/",
+        json=test_source_data,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    # Try to create duplicate
+    response = await client.post(
+        "/api/v1/sources/",
+        json=test_source_data,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 400
+    assert "already exists" in response.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_update_source(
+    client: AsyncClient, test_user_data: dict, test_source_data: dict
+):
+    """Test updating a source."""
+    token = await get_auth_token(client, test_user_data)
+
+    # Create a source
+    create_response = await client.post(
+        "/api/v1/sources/",
+        json=test_source_data,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    source_id = create_response.json()["id"]
+
+    # Update the source
+    update_data = {
+        "name": "Updated Source Name",
+        "description": "Updated description",
+    }
+    response = await client.patch(
+        f"/api/v1/sources/{source_id}",
+        json=update_data,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["name"] == "Updated Source Name"
+    assert data["description"] == "Updated description"
+    # Original URL should be preserved
+    assert data["url"] == test_source_data["url"]
+
+
+@pytest.mark.asyncio
+async def test_update_source_unauthorized(
+    client: AsyncClient, test_user_data: dict, test_source_data: dict
+):
+    """Test that updating source requires authentication."""
+    token = await get_auth_token(client, test_user_data)
+
+    # Create a source
+    create_response = await client.post(
+        "/api/v1/sources/",
+        json=test_source_data,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    source_id = create_response.json()["id"]
+
+    # Try to update without auth
+    response = await client.patch(
+        f"/api/v1/sources/{source_id}",
+        json={"name": "Should Fail"},
+    )
+
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_update_nonexistent_source(client: AsyncClient, test_user_data: dict):
+    """Test updating a source that doesn't exist."""
+    token = await get_auth_token(client, test_user_data)
+
+    response = await client.patch(
+        "/api/v1/sources/00000000-0000-0000-0000-000000000000",
+        json={"name": "Should Fail"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_source_unauthorized(
+    client: AsyncClient, test_user_data: dict, test_source_data: dict
+):
+    """Test that deleting source requires authentication."""
+    token = await get_auth_token(client, test_user_data)
+
+    # Create a source
+    create_response = await client.post(
+        "/api/v1/sources/",
+        json=test_source_data,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    source_id = create_response.json()["id"]
+
+    # Try to delete without auth
+    response = await client.delete(f"/api/v1/sources/{source_id}")
+
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_delete_nonexistent_source(client: AsyncClient, test_user_data: dict):
+    """Test deleting a source that doesn't exist."""
+    token = await get_auth_token(client, test_user_data)
+
+    response = await client.delete(
+        "/api/v1/sources/00000000-0000-0000-0000-000000000000",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_list_sources_pagination(
+    client: AsyncClient, test_user_data: dict
+):
+    """Test listing sources with pagination parameters."""
+    token = await get_auth_token(client, test_user_data)
+
+    # Create multiple sources
+    for i in range(3):
+        await client.post(
+            "/api/v1/sources/",
+            json={
+                "name": f"Source {i}",
+                "url": f"https://example{i}.com",
+                "source_type": "rss",
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    # Test pagination
+    response = await client.get("/api/v1/sources/?skip=1&limit=2")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) <= 2
+
+
+@pytest.mark.asyncio
+async def test_list_sources_active_only(
+    client: AsyncClient, test_user_data: dict, test_source_data: dict
+):
+    """Test filtering sources by active status."""
+    token = await get_auth_token(client, test_user_data)
+
+    # Create an active source
+    await client.post(
+        "/api/v1/sources/",
+        json=test_source_data,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    # Test active_only filter
+    response = await client.get("/api/v1/sources/?active_only=true")
+
+    assert response.status_code == 200
+    data = response.json()
+    # All returned sources should be active
+    assert all(source["is_active"] for source in data)

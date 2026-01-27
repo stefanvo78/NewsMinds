@@ -12,12 +12,16 @@ This is the entry point for the API. It:
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from src.api.core.config import settings
 from src.api.core.database import engine
 from src.api.core.logging import logger
+from src.api.core.rate_limit import limiter
 from src.api.routers import auth, users, sources, articles, intelligence
 
 
@@ -79,6 +83,10 @@ app = FastAPI(
     redoc_url=f"{settings.API_V1_PREFIX}/redoc",
     lifespan=lifespan,
 )
+
+# Configure rate limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Instrument FastAPI with OpenTelemetry (if Azure Monitor is configured)
 if _azure_monitor_configured:

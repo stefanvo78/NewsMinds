@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     # Security
     SECRET_KEY: str = "change-me-in-production"  # For JWT signing
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ALLOW_PUBLIC_REGISTRATION: bool = False  # Disable public registration by default
 
     # Database (Azure SQL)
     DATABASE_URL: str = ""  # Will be loaded from Key Vault in production

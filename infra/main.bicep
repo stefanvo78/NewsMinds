@@ -44,6 +44,9 @@ param secretKey string
 @description('Tags to apply to all resources')
 param tags object = {}
 
+@description('Allowed IP addresses for API access. Empty array means public access.')
+param allowedIPs array = []
+
 // ----------------------------------------------------------------------------
 // VARIABLES
 // ----------------------------------------------------------------------------
@@ -193,6 +196,8 @@ module apiContainerApp 'modules/container-app-api.bicep' = {
     // Pass secrets for the application
     databaseUrl: 'mssql+aioodbc://${sqlAdminLogin}:${sqlAdminPassword}@${sqlDatabase.outputs.fqdn}:1433/newsminds?driver=ODBC+Driver+18+for+SQL+Server&encrypt=yes&TrustServerCertificate=no'
     secretKey: secretKey
+    // IP allowlist for access control
+    allowedIPs: allowedIPs
   }
 }
 

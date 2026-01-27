@@ -1,0 +1,10 @@
+{
+  "description": "IP addresses allowed to access the API. Update this file and redeploy to change access.",
+  "allowedIPs": [
+    {
+      "name": "stefan-home",
+      "ip": "38.141.192.220",
+      "description": "Stefan's home IP"
+    }
+  ]
+}

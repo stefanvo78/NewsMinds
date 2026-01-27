@@ -37,6 +37,13 @@ param sqlAdminPassword = ''  // Will be provided at deployment
 // JWT secret key for authentication - provided via GitHub secrets
 param secretKey = ''  // Will be provided at deployment
 
+// IP allowlist for API access
+// Update this list and redeploy to change who can access the API
+// Format: array of IP addresses (will be converted to /32 CIDR)
+param allowedIPs = [
+  '38.141.192.220'  // Stefan's home IP
+]
+
 // Resource tags for organization and cost tracking
 param tags = {
   Environment: 'Development'

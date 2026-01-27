@@ -57,3 +57,9 @@ class User(Base, TimestampMixin):
         default=False,
         nullable=False,
     )
+
+    # 2FA (TOTP) - stores the secret key for authenticator apps
+    totp_secret: Mapped[Optional[str]] = mapped_column(
+        String(32),
+        nullable=True,
+    )

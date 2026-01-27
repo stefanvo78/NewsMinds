@@ -13,6 +13,11 @@ alembic>=1.13.0
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
 bcrypt==4.0.1  # Pin bcrypt for passlib compatibility
+pyotp>=2.9.0  # TOTP 2FA
+qrcode[pil]>=7.4.0  # QR code generation for 2FA setup
+
+# Rate Limiting
+slowapi>=0.1.9
 
 # Validation
 pydantic>=2.5.0

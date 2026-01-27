@@ -62,6 +62,9 @@ param minReplicas int = 0  // Scale to zero for dev
 @maxValue(30)
 param maxReplicas int = 3
 
+@description('Allowed IP addresses for access (CIDR notation). Empty array means public access.')
+param allowedIPs array = []
+
 // ----------------------------------------------------------------------------
 // RESOURCES
 // ----------------------------------------------------------------------------
@@ -97,6 +100,13 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             weight: 100
           }
         ]
+
+        // IP restrictions - only allow specified IPs if provided
+        ipSecurityRestrictions: [for (ip, i) in allowedIPs: {
+          name: 'allow-${i}'
+          ipAddressRange: endsWith(ip, '/32') ? ip : '${ip}/32'
+          action: 'Allow'
+        }]
       }
 
       // Secrets that can be referenced by containers

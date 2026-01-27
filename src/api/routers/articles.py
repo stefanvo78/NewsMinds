@@ -7,6 +7,7 @@ import uuid
 from fastapi import APIRouter, HTTPException, status, Query
 from sqlalchemy import select, func
 
+
 from src.api.core.deps import DbSession, CurrentUser
 from src.api.models import Article, Source
 from src.api.schemas import (
@@ -15,6 +16,8 @@ from src.api.schemas import (
     ArticleResponse,
     ArticleListResponse,
 )
+
+from src.api.services.ai import ai_service
 
 
 router = APIRouter(prefix="/articles", tags=["Articles"])
@@ -145,3 +148,39 @@ async def delete_article(
 
     await db.delete(article)
     await db.commit()
+
+@router.post("/{article_id}/summarize")
+async def summarize_article(
+    article_id: uuid.UUID,
+    db:  DbSession,
+    current_user: CurrentUser,
+) -> dict:
+    """
+    Generate an AI summary for an article.
+    
+    Uses Claude to create a concise 2-3 sentence summary
+    of the article's content.
+    """
+    # First, check if AI service is available
+    if not ai_service.is_available:
+        raise HTTPException(
+            status_code=503,
+            detail="AI service not configured"
+        )
+    
+    # Get the article from database
+    result = await db.execute(
+        select(Article).where(Article.id == article_id)
+    )
+    article = result.scalar_one_or_none()
+    
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+    
+    # Generate the summary
+    summary = await ai_service.summarize_article(
+        title=article.title,
+        content=article.content
+    )
+    
+    return {"article_id": str(article_id), "summary": summary}

@@ -38,6 +38,18 @@ class Settings(BaseSettings):
     # Azure Key Vault
     KEY_VAULT_URL: str = ""
 
+    # AI Agent Configuration (OpenAI)
+    OPENAI_API_KEY: str | None = None
+    OPENAI_MODEL: str = "gpt-4o"  # or "gpt-4o-mini" for cheaper option
+
+
+    # Vector Database (Qdrant)
+    QDRANT_URL: str = "http://localhost:6333"
+    QDRANT_API_KEY: str | None = None
+
+    # Embedding Model
+    EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
+
     # Tell Pydantic to read from .env file
     model_config = SettingsConfigDict(
         env_file=".env",

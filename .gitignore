@@ -175,6 +175,10 @@ coverage/
 tmp/
 temp/
 *.db
+*.sqlite
+*.sqlite3
+data/*.db
+data/*.sqlite
 
 # ----------------------------------------------------------------------------
 # Data files (may be large or contain sensitive data)
@@ -198,3 +202,7 @@ data/processed/
 # ML models directory (not SQLAlchemy models)
 /models/
 !/models/.gitkeep
+
+
+.CLAUDE.md
+docs/CLASSROOM_AI_AGENTS.md

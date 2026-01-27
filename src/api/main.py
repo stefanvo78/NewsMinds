@@ -6,8 +6,10 @@ This is the entry point for the API. It:
 - Configures middleware (CORS, etc.)
 - Includes all routers
 - Sets up event handlers (startup/shutdown)
+- Integrates with Azure Monitor for observability
 """
 
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -15,7 +17,27 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.core.config import settings
 from src.api.core.database import engine
-from src.api.routers import auth, users, sources, articles
+from src.api.core.logging import logger
+from src.api.routers import auth, users, sources, articles, intelligence
+
+
+# Azure Monitor integration (only when connection string is provided)
+# This enables automatic tracing of requests, dependencies, and exceptions
+_azure_monitor_configured = False
+if os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING"):
+    try:
+        from azure.monitor.opentelemetry import configure_azure_monitor
+
+        configure_azure_monitor()
+        _azure_monitor_configured = True
+        logger.info("Azure Monitor configured successfully")
+    except ImportError:
+        logger.warning(
+            "azure-monitor-opentelemetry not installed. "
+            "Install with: pip install azure-monitor-opentelemetry"
+        )
+    except Exception as e:
+        logger.error(f"Failed to configure Azure Monitor: {e}")
 
 
 @asynccontextmanager
@@ -23,18 +45,28 @@ async def lifespan(app: FastAPI):
     """
     Lifespan context manager for startup/shutdown events.
 
-    - Startup: Initialize connections
+    - Startup: Initialize connections, log startup
     - Shutdown: Close connections gracefully
 
     Note: Database tables are managed by Alembic migrations.
     Run 'alembic upgrade head' before starting the app.
     """
     # Startup
-    print(f"Starting {settings.APP_NAME}...")
+    logger.info(f"Starting {settings.APP_NAME}...")
+    logger.info(f"Environment: {settings.ENVIRONMENT}")
+    logger.info(f"Debug mode: {settings.DEBUG}")
+
+    if _azure_monitor_configured:
+        logger.info("Telemetry: Azure Monitor enabled")
+    else:
+        logger.info("Telemetry: Azure Monitor not configured")
+
     yield
+
     # Shutdown
-    print(f"Shutting down {settings.APP_NAME}...")
+    logger.info(f"Shutting down {settings.APP_NAME}...")
     await engine.dispose()
+    logger.info("Database connections closed")
 
 
 # Create the FastAPI application
@@ -47,6 +79,16 @@ app = FastAPI(
     redoc_url=f"{settings.API_V1_PREFIX}/redoc",
     lifespan=lifespan,
 )
+
+# Instrument FastAPI with OpenTelemetry (if Azure Monitor is configured)
+if _azure_monitor_configured:
+    try:
+        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+
+        FastAPIInstrumentor.instrument_app(app)
+        logger.info("FastAPI instrumented with OpenTelemetry")
+    except ImportError:
+        logger.warning("opentelemetry-instrumentation-fastapi not installed")
 
 # Configure CORS (Cross-Origin Resource Sharing)
 # This allows frontend apps on different domains to call our API
@@ -63,6 +105,7 @@ app.include_router(auth.router, prefix=settings.API_V1_PREFIX)
 app.include_router(users.router, prefix=settings.API_V1_PREFIX)
 app.include_router(sources.router, prefix=settings.API_V1_PREFIX)
 app.include_router(articles.router, prefix=settings.API_V1_PREFIX)
+app.include_router(intelligence.router, prefix=settings.API_V1_PREFIX)
 
 
 # Health check endpoint (no auth required)
@@ -72,6 +115,10 @@ async def health_check():
     Health check endpoint for load balancers and container orchestrators.
 
     Returns 200 OK if the service is running.
+    Used by:
+    - Docker HEALTHCHECK
+    - Azure Container Apps liveness/readiness probes
+    - Load balancers
     """
     return {"status": "healthy", "service": settings.APP_NAME}
 

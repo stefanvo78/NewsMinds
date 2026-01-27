@@ -1,0 +1,93 @@
+version: '3.8'
+
+# =============================================================================
+# NewsMinds Local Development Environment
+# =============================================================================
+# This docker-compose setup mirrors the production Azure environment:
+# - API container (same as Azure Container App)
+# - Qdrant vector database (same as production)
+# - SQLite for local dev (Azure SQL in production)
+#
+# Usage:
+#   docker-compose up --build        # Start all services
+#   docker-compose up -d             # Start in background
+#   docker-compose logs -f api       # Follow API logs
+#   docker-compose down              # Stop and remove containers
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # FastAPI Application
+  # ---------------------------------------------------------------------------
+  # This is the main API service that handles all HTTP requests.
+  # In production, this runs as an Azure Container App.
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      # Application settings
+      - DEBUG=true
+      - ENVIRONMENT=development
+      - SECRET_KEY=dev-secret-key-change-in-production
+
+      # Database (SQLite for local dev)
+      - DATABASE_URL=sqlite+aiosqlite:///./data/newsminds.db
+
+      # OpenAI API (required for agents)
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o}
+
+      # Vector database (Qdrant)
+      - QDRANT_URL=http://qdrant:6333
+
+      # Azure Monitor (optional for local dev)
+      # Uncomment to test telemetry locally:
+      # - APPLICATIONINSIGHTS_CONNECTION_STRING=${APPLICATIONINSIGHTS_CONNECTION_STRING}
+    volumes:
+      # Persist SQLite database between restarts
+      - ./data:/app/data
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Qdrant Vector Database
+  # ---------------------------------------------------------------------------
+  # Stores document embeddings for RAG (Retrieval-Augmented Generation).
+  # In production, this runs as an Azure Container App or managed service.
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"   # REST API
+      - "6334:6334"   # gRPC API
+    volumes:
+      # Persist vector data between restarts
+      - qdrant_data:/qdrant/storage
+    environment:
+      - QDRANT__LOG_LEVEL=INFO
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+    restart: unless-stopped
+
+# =============================================================================
+# Volumes
+# =============================================================================
+# Named volumes persist data between container restarts.
+
+volumes:
+  qdrant_data:
+    driver: local

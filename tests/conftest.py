@@ -108,3 +108,17 @@ def test_source_data() -> dict:
         "description": "A test news source",
         "source_type": "rss",
     }
+
+@pytest.fixture
+def test_article_data() -> dict:
+    """Sample article data for tests (without source_id)."""
+    return {
+        "title": "Test Article Title",
+        "url": "https://example.com/article/1",
+        "content": "This is the full article content.",
+        "summary": "A brief summary of the article.",
+        "author": "Test Author",
+        "published_at": "2024-01-15T10:00:00Z",
+        "fetched_at": "2024-01-15T12:00:00Z",
+    }
+

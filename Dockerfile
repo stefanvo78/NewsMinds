@@ -58,6 +58,10 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY alembic.ini .
 COPY alembic/ alembic/
 COPY src/ src/
+COPY scripts/docker-entrypoint.sh .
+
+# Make entrypoint executable and create data directory
+RUN chmod +x docker-entrypoint.sh && mkdir -p /app/data
 
 # Create non-root user for security
 # Running as root in containers is a security risk
@@ -71,6 +75,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
-# Command to run the application
-# Using array syntax (exec form) for proper signal handling
-CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run entrypoint script (runs migrations then starts server)
+CMD ["./docker-entrypoint.sh"]

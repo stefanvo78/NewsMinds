@@ -307,8 +307,8 @@ jobs:
       # Run database migrations
       - name: Install ODBC Driver
         run: |
-          curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
-          curl -fsSL https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
+          curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --batch --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
+          curl -fsSL https://packages.microsoft.com/config/ubuntu/24.04/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
           sudo apt-get update
           sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev
 

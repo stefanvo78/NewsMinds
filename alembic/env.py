@@ -23,7 +23,10 @@ config = context.config
 
 # Set the database URL from our settings
 # This overrides whatever is in alembic.ini
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# Note: We need to escape % characters as %% because configparser
+# interprets % as interpolation syntax
+escaped_url = settings.DATABASE_URL.replace("%", "%%")
+config.set_main_option("sqlalchemy.url", escaped_url)
 
 # Setup logging from config file
 if config.config_file_name is not None:

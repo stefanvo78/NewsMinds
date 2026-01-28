@@ -22,6 +22,7 @@ from mcp.client.stdio import stdio_client
 # Lazy-load OpenAI client to allow app startup without API key
 _openai_client = None
 
+
 def _get_openai_client() -> OpenAI:
     global _openai_client
     if _openai_client is None:
@@ -79,6 +80,7 @@ async def search_external_news(state: ResearchAgentState) -> dict:
 
     # Parse and add to state
     import json
+
     news_data = json.loads(result)
 
     return {
@@ -90,6 +92,7 @@ async def search_external_news(state: ResearchAgentState) -> dict:
             }
         ],
     }
+
 
 def retrieve_documents(state: ResearchAgentState) -> dict:
     """
@@ -123,10 +126,9 @@ def extract_facts(state: ResearchAgentState) -> dict:
     query = state["query"]
 
     # Build context from documents
-    context = "\n\n".join([
-        f"Document {i+1}:\n{doc['text']}"
-        for i, doc in enumerate(docs)
-    ])
+    context = "\n\n".join(
+        [f"Document {i + 1}:\n{doc['text']}" for i, doc in enumerate(docs)]
+    )
 
     # Ask Claude to extract relevant facts
     response = chat(
@@ -139,13 +141,17 @@ def extract_facts(state: ResearchAgentState) -> dict:
 Documents:
 {context}
 
-List the relevant facts as bullet points. Only include facts that are directly stated in the documents."""
+List the relevant facts as bullet points. Only include facts that are directly stated in the documents.""",
             }
         ],
     )
 
     facts_text = response
-    facts = [line.strip("- ").strip() for line in facts_text.split("\n") if line.strip().startswith("-")]
+    facts = [
+        line.strip("- ").strip()
+        for line in facts_text.split("\n")
+        if line.strip().startswith("-")
+    ]
 
     return {
         "facts": facts,
@@ -181,10 +187,10 @@ def decide_next_step(state: ResearchAgentState) -> str:
                 "content": f"""Question: "{query}"
 
 Facts gathered so far:
-{chr(10).join(f'- {fact}' for fact in facts)}
+{chr(10).join(f"- {fact}" for fact in facts)}
 
 Do we have enough information to fully answer this question?
-Reply with ONLY "YES" or "NO"."""
+Reply with ONLY "YES" or "NO".""",
             }
         ],
     )
@@ -214,9 +220,9 @@ def generate_answer(state: ResearchAgentState) -> dict:
 Question: "{query}"
 
 Facts:
-{chr(10).join(f'- {fact}' for fact in facts)}
+{chr(10).join(f"- {fact}" for fact in facts)}
 
-Provide a clear, well-structured answer. If the facts don't fully answer the question, acknowledge what's missing."""
+Provide a clear, well-structured answer. If the facts don't fully answer the question, acknowledge what's missing.""",
             }
         ],
     )

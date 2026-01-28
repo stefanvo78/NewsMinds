@@ -53,7 +53,7 @@ async def create_article(
     db.add(article)
     await db.commit()
     await db.refresh(article)
-    
+
     # Auto-ingest to Qdrant for RAG retrieval
     if article.content:
         try:
@@ -66,7 +66,7 @@ async def create_article(
             }
             if article.published_at:
                 metadata["published_at"] = article.published_at.isoformat()
-            
+
             num_chunks = rag_retriever.ingest_document(
                 text=article.content,
                 metadata=metadata,
@@ -76,7 +76,7 @@ async def create_article(
         except Exception as e:
             # Don't fail article creation if Qdrant ingestion fails
             logger.warning(f"Failed to ingest article {article.id} to Qdrant: {e}")
-    
+
     return article
 
 
@@ -176,40 +176,33 @@ async def delete_article(
     await db.delete(article)
     await db.commit()
 
+
 @router.post("/{article_id}/summarize")
 async def summarize_article(
     article_id: uuid.UUID,
-    db:  DbSession,
+    db: DbSession,
     current_user: CurrentUser,
 ) -> dict:
     """
     Generate an AI summary for an article.
-    
+
     Uses Claude to create a concise 2-3 sentence summary
     of the article's content.
     """
     # First, check if AI service is available
     if not ai_service.is_available:
-        raise HTTPException(
-            status_code=503,
-            detail="AI service not configured"
-        )
-    
+        raise HTTPException(status_code=503, detail="AI service not configured")
+
     # Get the article from database
-    result = await db.execute(
-        select(Article).where(Article.id == article_id)
-    )
+    result = await db.execute(select(Article).where(Article.id == article_id))
     article = result.scalar_one_or_none()
-    
+
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
-    
+
     # Generate the summary
-    summary = await ai_service.summarize_article(
-        title=article.title,
-        content=article.content
-    )
-    
+    summary = await ai_service.summarize_article(title=article.title, content=article.content)
+
     return {"article_id": str(article_id), "summary": summary}
 
 
@@ -221,22 +214,20 @@ async def ingest_article_to_qdrant(
 ) -> dict:
     """
     Manually ingest an article into the Qdrant vector store.
-    
-    This is useful for re-indexing or ingesting articles that 
+
+    This is useful for re-indexing or ingesting articles that
     were created before auto-ingestion was enabled.
     """
     # Get the article from database
-    result = await db.execute(
-        select(Article).where(Article.id == article_id)
-    )
+    result = await db.execute(select(Article).where(Article.id == article_id))
     article = result.scalar_one_or_none()
-    
+
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
-    
+
     if not article.content:
         raise HTTPException(status_code=400, detail="Article has no content to ingest")
-    
+
     # Ingest to Qdrant
     try:
         metadata = {
@@ -248,13 +239,13 @@ async def ingest_article_to_qdrant(
         }
         if article.published_at:
             metadata["published_at"] = article.published_at.isoformat()
-        
+
         num_chunks = rag_retriever.ingest_document(
             text=article.content,
             metadata=metadata,
             chunk_size=500,
         )
-        
+
         return {
             "article_id": str(article_id),
             "status": "ingested",
@@ -271,19 +262,17 @@ async def ingest_all_articles_to_qdrant(
 ) -> dict:
     """
     Ingest all articles from the database into Qdrant.
-    
+
     This is a bulk operation for initial setup or re-indexing.
     """
     # Get all articles with content
-    result = await db.execute(
-        select(Article).where(Article.content.isnot(None))
-    )
+    result = await db.execute(select(Article).where(Article.content.isnot(None)))
     articles = result.scalars().all()
-    
+
     total_chunks = 0
     ingested = 0
     failed = 0
-    
+
     for article in articles:
         try:
             metadata = {
@@ -295,7 +284,7 @@ async def ingest_all_articles_to_qdrant(
             }
             if article.published_at:
                 metadata["published_at"] = article.published_at.isoformat()
-            
+
             num_chunks = rag_retriever.ingest_document(
                 text=article.content,
                 metadata=metadata,
@@ -306,7 +295,7 @@ async def ingest_all_articles_to_qdrant(
         except Exception as e:
             logger.warning(f"Failed to ingest article {article.id}: {e}")
             failed += 1
-    
+
     return {
         "status": "complete",
         "articles_ingested": ingested,

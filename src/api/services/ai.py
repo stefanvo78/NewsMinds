@@ -49,7 +49,7 @@ Be concise and capture the key points.
 
 Title: {title}
 
-Content: {content}"""
+Content: {content}""",
                 }
             ],
         )

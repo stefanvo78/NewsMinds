@@ -107,6 +107,7 @@ async def login(
                 headers={"WWW-Authenticate": "Bearer"},
             )
         import pyotp
+
         totp = pyotp.TOTP(user.totp_secret)
         if not totp.verify(totp_code):
             raise HTTPException(
@@ -132,6 +133,7 @@ import pyotp
 
 class TOTPSetupResponse(BaseModel):
     """Response containing TOTP setup information."""
+
     secret: str
     provisioning_uri: str
     qr_code_base64: str | None = None
@@ -139,6 +141,7 @@ class TOTPSetupResponse(BaseModel):
 
 class TOTPVerifyRequest(BaseModel):
     """Request to verify and enable TOTP."""
+
     code: str
 
 

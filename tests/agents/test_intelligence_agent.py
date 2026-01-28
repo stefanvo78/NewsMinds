@@ -41,9 +41,7 @@ def test_search_internal_respects_strategy(mock_rag):
     """Test that internal search respects the strategy."""
     from src.agents.intelligence_agent import search_internal
 
-    mock_rag.retrieve.return_value = [
-        {"text": "Test document", "score": 0.9}
-    ]
+    mock_rag.retrieve.return_value = [{"text": "Test document", "score": 0.9}]
 
     # When strategy is INTERNAL, should search
     state = {"query": "test", "search_strategy": "INTERNAL"}
@@ -64,13 +62,19 @@ async def test_full_agent_flow(mock_claude, mock_rag):
     # Mock all Claude calls
     mock_claude.messages.create.side_effect = [
         MagicMock(content=[MagicMock(text="BOTH")]),  # plan_search
-        MagicMock(content=[MagicMock(text="KEY_FACTS:\n- Fact 1\n- Fact 2\n\nCONTRADICTIONS:\nNone")]),  # analyze
-        MagicMock(content=[MagicMock(text="## Briefing\n\nThis is the briefing.")]),  # generate
+        MagicMock(
+            content=[
+                MagicMock(
+                    text="KEY_FACTS:\n- Fact 1\n- Fact 2\n\nCONTRADICTIONS:\nNone"
+                )
+            ]
+        ),  # analyze
+        MagicMock(
+            content=[MagicMock(text="## Briefing\n\nThis is the briefing.")]
+        ),  # generate
     ]
 
-    mock_rag.retrieve.return_value = [
-        {"text": "Test content", "score": 0.9}
-    ]
+    mock_rag.retrieve.return_value = [{"text": "Test content", "score": 0.9}]
 
     briefing = await get_intelligence_briefing("Test query")
 

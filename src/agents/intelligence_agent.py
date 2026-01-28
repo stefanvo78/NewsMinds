@@ -19,6 +19,7 @@ from src.rag.retriever import rag_retriever
 # Lazy-load OpenAI client to allow app startup without API key
 _openai_client = None
 
+
 def _get_openai_client() -> OpenAI:
     global _openai_client
     if _openai_client is None:
@@ -37,8 +38,10 @@ def chat(messages: list[dict], max_tokens: int = 1000) -> str:
     )
     return response.choices[0].message.content
 
+
 class IntelligenceState(TypedDict):
     """State for the Intelligence Agent."""
+
     messages: Annotated[list, add_messages]
     query: str
 
@@ -82,7 +85,7 @@ Should I search:
 
 Consider: Is this about recent events (external), our historical data (internal), or needs comprehensive coverage (both)?
 
-Reply with only: INTERNAL, EXTERNAL, or BOTH"""
+Reply with only: INTERNAL, EXTERNAL, or BOTH""",
             }
         ],
     )
@@ -103,19 +106,22 @@ def search_internal(state: IntelligenceState) -> dict:
         return {"internal_docs": []}
 
     query = state["query"]
-    
+
     # Try to search, but gracefully handle if Qdrant is unavailable
     try:
         docs = rag_retriever.retrieve(query, limit=10)
     except Exception as e:
         # Qdrant not available - continue without internal docs
         import logging
+
         logging.warning(f"RAG retrieval failed (Qdrant may not be configured): {e}")
         docs = []
 
     return {
         "internal_docs": docs,
-        "messages": [{"role": "assistant", "content": f"Found {len(docs)} internal documents"}],
+        "messages": [
+            {"role": "assistant", "content": f"Found {len(docs)} internal documents"}
+        ],
     }
 
 
@@ -177,7 +183,7 @@ KEY_FACTS:
 - fact 2
 
 CONTRADICTIONS:
-- contradiction 1 (or "None found" if none)"""
+- contradiction 1 (or "None found" if none)""",
             }
         ],
     )
@@ -206,7 +212,12 @@ CONTRADICTIONS:
     return {
         "key_facts": facts,
         "contradictions": contradictions,
-        "messages": [{"role": "assistant", "content": f"Analyzed: {len(facts)} facts, {len(contradictions)} contradictions"}],
+        "messages": [
+            {
+                "role": "assistant",
+                "content": f"Analyzed: {len(facts)} facts, {len(contradictions)} contradictions",
+            }
+        ],
     }
 
 
@@ -219,7 +230,9 @@ def generate_briefing(state: IntelligenceState) -> dict:
     query = state["query"]
 
     facts_text = "\n".join(f"- {f}" for f in facts) if facts else "No facts extracted"
-    contradictions_text = "\n".join(f"- {c}" for c in contradictions) if contradictions else "None"
+    contradictions_text = (
+        "\n".join(f"- {c}" for c in contradictions) if contradictions else "None"
+    )
 
     response = chat(
         max_tokens=1500,
@@ -240,7 +253,7 @@ Format the briefing with:
 3. UNCERTAINTIES (if any)
 4. RECOMMENDED ACTIONS (if applicable)
 
-Keep it concise and actionable."""
+Keep it concise and actionable.""",
             }
         ],
     )

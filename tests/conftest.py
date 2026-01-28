@@ -109,6 +109,7 @@ def test_source_data() -> dict:
         "source_type": "rss",
     }
 
+
 @pytest.fixture
 def test_article_data() -> dict:
     """Sample article data for tests (without source_id)."""
@@ -121,4 +122,3 @@ def test_article_data() -> dict:
         "published_at": "2024-01-15T10:00:00Z",
         "fetched_at": "2024-01-15T12:00:00Z",
     }
-

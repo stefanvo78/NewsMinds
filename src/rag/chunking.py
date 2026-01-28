@@ -10,6 +10,7 @@ from dataclasses import dataclass
 @dataclass
 class Chunk:
     """A piece of a document."""
+
     text: str
     metadata: dict
     chunk_index: int
@@ -47,7 +48,7 @@ def chunk_text(
         # Try to break at a sentence boundary
         if end < len(text):
             # Look for sentence endings
-            for sep in ['. ', '! ', '? ', '\n\n', '\n']:
+            for sep in [". ", "! ", "? ", "\n\n", "\n"]:
                 last_sep = text[start:end].rfind(sep)
                 if last_sep != -1:
                     end = start + last_sep + len(sep)
@@ -56,11 +57,13 @@ def chunk_text(
         chunk_text = text[start:end].strip()
 
         if chunk_text:  # Don't add empty chunks
-            chunks.append(Chunk(
-                text=chunk_text,
-                metadata={**metadata, "chunk_index": chunk_index},
-                chunk_index=chunk_index,
-            ))
+            chunks.append(
+                Chunk(
+                    text=chunk_text,
+                    metadata={**metadata, "chunk_index": chunk_index},
+                    chunk_index=chunk_index,
+                )
+            )
             chunk_index += 1
 
         # Move start, accounting for overlap

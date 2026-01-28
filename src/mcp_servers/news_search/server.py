@@ -113,10 +113,12 @@ async def handle_search_news(arguments: dict) -> list[TextContent]:
         ][:max_results],
     }
 
-    return [TextContent(
-        type="text",
-        text=json.dumps(results, indent=2),
-    )]
+    return [
+        TextContent(
+            type="text",
+            text=json.dumps(results, indent=2),
+        )
+    ]
 
 
 async def handle_trending_topics(arguments: dict) -> list[TextContent]:
@@ -131,13 +133,18 @@ async def handle_trending_topics(arguments: dict) -> list[TextContent]:
         "health": ["New Vaccines", "Mental Health", "Drug Pricing"],
     }
 
-    return [TextContent(
-        type="text",
-        text=json.dumps({
-            "category": category,
-            "trending": topics.get(category, []),
-        }, indent=2),
-    )]
+    return [
+        TextContent(
+            type="text",
+            text=json.dumps(
+                {
+                    "category": category,
+                    "trending": topics.get(category, []),
+                },
+                indent=2,
+            ),
+        )
+    ]
 
 
 async def main():
@@ -154,4 +161,5 @@ async def main():
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())

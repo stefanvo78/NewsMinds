@@ -41,22 +41,25 @@ def upgrade() -> None:
     if not admin_password:
         # Generate a random password if not provided
         import secrets
+
         admin_password = secrets.token_urlsafe(24)
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("DEFAULT ADMIN USER CREATED")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print(f"Email: {admin_email}")
         print(f"Password: {admin_password}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print("IMPORTANT: Save this password! It won't be shown again.")
         print("You should enable 2FA immediately after first login.")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
     hashed_password = pwd_context.hash(admin_password)
 
     # Insert admin user
     # Use standard UUID format with hyphens for SQL Server UNIQUEIDENTIFIER compatibility
-    admin_uuid = str(uuid.uuid4())  # Standard format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+    admin_uuid = str(
+        uuid.uuid4()
+    )  # Standard format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
     op.execute(
         sa.text(
             """
@@ -77,9 +80,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Remove totp_secret column and admin user."""
     # Remove admin user
-    op.execute(
-        sa.text("DELETE FROM users WHERE email = 'admin@newsminds.local'")
-    )
+    op.execute(sa.text("DELETE FROM users WHERE email = 'admin@newsminds.local'"))
 
     # Remove TOTP secret column
     op.drop_column("users", "totp_secret")

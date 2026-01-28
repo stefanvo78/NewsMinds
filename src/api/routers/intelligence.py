@@ -16,11 +16,13 @@ router = APIRouter(prefix="/intelligence", tags=["Intelligence"])
 
 class BriefingRequest(BaseModel):
     """Request for an intelligence briefing."""
+
     query: str
 
 
 class BriefingResponse(BaseModel):
     """Intelligence briefing response."""
+
     query: str
     briefing: str
 

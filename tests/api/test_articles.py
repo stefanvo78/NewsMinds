@@ -27,7 +27,6 @@ async def create_source(client: AsyncClient, token: str, source_data: dict) -> d
     return response.json()
 
 
-
 @pytest.mark.asyncio
 async def test_create_article(
     client: AsyncClient,

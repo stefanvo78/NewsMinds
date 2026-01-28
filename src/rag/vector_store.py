@@ -70,14 +70,16 @@ class VectorStore:
         for chunk, embedding in zip(chunks, embeddings):
             point_id = str(uuid4())
             ids.append(point_id)
-            points.append(PointStruct(
-                id=point_id,
-                vector=embedding,
-                payload={
-                    "text": chunk.text,
-                    **chunk.metadata,
-                },
-            ))
+            points.append(
+                PointStruct(
+                    id=point_id,
+                    vector=embedding,
+                    payload={
+                        "text": chunk.text,
+                        **chunk.metadata,
+                    },
+                )
+            )
 
         # Upsert to Qdrant
         self.client.upsert(
@@ -133,10 +135,7 @@ class VectorStore:
                 "id": point.id,
                 "score": point.score,
                 "text": point.payload.get("text", ""),
-                "metadata": {
-                    k: v for k, v in point.payload.items()
-                    if k != "text"
-                },
+                "metadata": {k: v for k, v in point.payload.items() if k != "text"},
             }
             for point in results.points
         ]

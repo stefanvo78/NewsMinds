@@ -40,7 +40,6 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str | None = None
     OPENAI_MODEL: str = "gpt-4o"  # or "gpt-4o-mini" for cheaper option
 
-
     # Vector Database (Qdrant)
     QDRANT_URL: str = "http://localhost:6333"
     QDRANT_API_KEY: str | None = None

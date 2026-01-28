@@ -95,7 +95,9 @@ class RAGRetriever:
             text = result["text"]
             if current_length + len(text) > max_chars:
                 break
-            context_parts.append(f"[Source: {result['metadata'].get('title', 'Unknown')}]\n{text}")
+            context_parts.append(
+                f"[Source: {result['metadata'].get('title', 'Unknown')}]\n{text}"
+            )
             current_length += len(text)
 
         return "\n\n---\n\n".join(context_parts)

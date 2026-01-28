@@ -10,6 +10,7 @@ from langgraph.graph.message import add_messages
 
 class AgentMessage(TypedDict):
     """A message in the conversation."""
+
     role: str  # "user", "assistant", or "tool"
     content: str
 
@@ -20,6 +21,7 @@ class ResearchAgentState(TypedDict):
 
     This state is passed between nodes and accumulates information.
     """
+
     # The conversation history (uses add_messages reducer to append)
     messages: Annotated[list, add_messages]
 

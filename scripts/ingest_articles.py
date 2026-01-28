@@ -43,14 +43,14 @@ async def get_db_session() -> AsyncSession:
 async def ingest_article(article: Article) -> int:
     """
     Ingest a single article into the vector store.
-    
+
     Returns the number of chunks created.
     """
     # Skip articles without content
     if not article.content:
         print(f"  Skipping {article.id} - no content")
         return 0
-    
+
     # Build metadata for retrieval filtering
     metadata = {
         "article_id": str(article.id),
@@ -59,55 +59,53 @@ async def ingest_article(article: Article) -> int:
         "url": article.url,
         "author": article.author or "Unknown",
     }
-    
+
     # Add published date if available
     if article.published_at:
         metadata["published_at"] = article.published_at.isoformat()
-    
+
     # Ingest into vector store
     num_chunks = rag_retriever.ingest_document(
         text=article.content,
         metadata=metadata,
         chunk_size=500,
     )
-    
+
     return num_chunks
 
 
 async def ingest_all_articles():
     """Ingest all articles from the database."""
     print("Starting full article ingestion...")
-    
+
     async with await get_db_session() as session:
         result = await session.execute(select(Article))
         articles = result.scalars().all()
-        
+
         print(f"Found {len(articles)} articles to ingest")
-        
+
         total_chunks = 0
         for i, article in enumerate(articles, 1):
             print(f"[{i}/{len(articles)}] Ingesting: {article.title[:50]}...")
             chunks = await ingest_article(article)
             total_chunks += chunks
             print(f"  Created {chunks} chunks")
-        
+
         print(f"\nDone! Ingested {len(articles)} articles into {total_chunks} chunks")
 
 
 async def ingest_single_article(article_id: str):
     """Ingest a specific article by ID."""
     print(f"Ingesting article {article_id}...")
-    
+
     async with await get_db_session() as session:
-        result = await session.execute(
-            select(Article).where(Article.id == article_id)
-        )
+        result = await session.execute(select(Article).where(Article.id == article_id))
         article = result.scalar_one_or_none()
-        
+
         if not article:
             print(f"Article not found: {article_id}")
             return
-        
+
         chunks = await ingest_article(article)
         print(f"Done! Created {chunks} chunks for '{article.title}'")
 
@@ -115,11 +113,11 @@ async def ingest_single_article(article_id: str):
 async def ingest_sample_data():
     """
     Ingest sample articles for testing (no database needed).
-    
+
     Use this to test RAG without having articles in your DB.
     """
     print("Ingesting sample articles for testing...")
-    
+
     sample_articles = [
         {
             "title": "OpenAI Announces GPT-5",
@@ -177,11 +175,11 @@ async def ingest_sample_data():
             "source": "Business Tech Review",
         },
     ]
-    
+
     total_chunks = 0
     for i, article in enumerate(sample_articles, 1):
         print(f"[{i}/{len(sample_articles)}] Ingesting: {article['title']}...")
-        
+
         chunks = rag_retriever.ingest_document(
             text=article["content"],
             metadata={
@@ -193,8 +191,10 @@ async def ingest_sample_data():
         )
         total_chunks += chunks
         print(f"  Created {chunks} chunks")
-    
-    print(f"\nDone! Ingested {len(sample_articles)} sample articles into {total_chunks} chunks")
+
+    print(
+        f"\nDone! Ingested {len(sample_articles)} sample articles into {total_chunks} chunks"
+    )
 
 
 def main():
@@ -202,7 +202,7 @@ def main():
     parser.add_argument("--article-id", help="Ingest a specific article by ID")
     parser.add_argument("--sample", action="store_true", help="Ingest sample test data")
     args = parser.parse_args()
-    
+
     if args.sample:
         asyncio.run(ingest_sample_data())
     elif args.article_id:

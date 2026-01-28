@@ -6,10 +6,12 @@ import pytest
 
 
 @pytest.fixture
-def mock_claude():
-    """Mock Claude API responses."""
-    with patch("src.agents.intelligence_agent.claude") as mock:
-        yield mock
+def mock_openai():
+    """Mock OpenAI API responses."""
+    with patch("src.agents.intelligence_agent._get_openai_client") as mock:
+        mock_client = MagicMock()
+        mock.return_value = mock_client
+        yield mock_client
 
 
 @pytest.fixture
@@ -19,13 +21,13 @@ def mock_rag():
         yield mock
 
 
-def test_plan_search_returns_valid_strategy(mock_claude):
+def test_plan_search_returns_valid_strategy(mock_openai):
     """Test that plan_search returns a valid strategy."""
     from src.agents.intelligence_agent import plan_search
 
-    # Mock Claude to return "BOTH"
-    mock_claude.messages.create.return_value = MagicMock(
-        content=[MagicMock(text="BOTH")]
+    # Mock OpenAI to return "BOTH"
+    mock_openai.chat.completions.create.return_value = MagicMock(
+        choices=[MagicMock(message=MagicMock(content="BOTH"))]
     )
 
     state = {
@@ -56,22 +58,30 @@ def test_search_internal_respects_strategy(mock_rag):
 
 
 @pytest.mark.asyncio
-async def test_full_agent_flow(mock_claude, mock_rag):
+async def test_full_agent_flow(mock_openai, mock_rag):
     """Test the complete agent flow."""
     from src.agents.intelligence_agent import get_intelligence_briefing
 
-    # Mock all Claude calls
-    mock_claude.messages.create.side_effect = [
-        MagicMock(content=[MagicMock(text="BOTH")]),  # plan_search
+    # Mock all OpenAI calls
+    mock_openai.chat.completions.create.side_effect = [
         MagicMock(
-            content=[
+            choices=[MagicMock(message=MagicMock(content="BOTH"))]
+        ),  # plan_search
+        MagicMock(
+            choices=[
                 MagicMock(
-                    text="KEY_FACTS:\n- Fact 1\n- Fact 2\n\nCONTRADICTIONS:\nNone"
+                    message=MagicMock(
+                        content="KEY_FACTS:\n- Fact 1\n- Fact 2\n\nCONTRADICTIONS:\nNone"
+                    )
                 )
             ]
         ),  # analyze
         MagicMock(
-            content=[MagicMock(text="## Briefing\n\nThis is the briefing.")]
+            choices=[
+                MagicMock(
+                    message=MagicMock(content="## Briefing\n\nThis is the briefing.")
+                )
+            ]
         ),  # generate
     ]
 

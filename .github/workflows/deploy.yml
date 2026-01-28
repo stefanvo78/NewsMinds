@@ -307,6 +307,7 @@ jobs:
       # Run database migrations
       - name: Install ODBC Driver
         run: |
+          sudo rm -f /usr/share/keyrings/microsoft-prod.gpg
           curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --batch --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
           curl -fsSL https://packages.microsoft.com/config/ubuntu/24.04/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
           sudo apt-get update

@@ -79,7 +79,7 @@ jobs:
 
       - name: List Resources to Delete
         run: |
-          rg="newsminds-${{ github.event.inputs.environment }}-rg"
+          rg="newsmind-${{ github.event.inputs.environment }}-rg"
 
           echo "🔍 Resources in resource group: $rg"
           echo ""
@@ -120,7 +120,7 @@ jobs:
 
       - name: Delete Resource Group
         run: |
-          rg="nminds-${{ github.event.inputs.environment }}-rg"
+          rg="newsmind-${{ github.event.inputs.environment }}-rg"
 
           echo "🗑️  Deleting resource group: $rg"
           echo ""
@@ -153,7 +153,7 @@ jobs:
           echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| Environment | \`${{ github.event.inputs.environment }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Resource Group | \`nminds-${{ github.event.inputs.environment }}-rg\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Resource Group | \`newsmind-${{ github.event.inputs.environment }}-rg\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Status | Deletion initiated (async) |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "⚠️ **Note:** Deletion may take several minutes to complete." >> $GITHUB_STEP_SUMMARY
@@ -162,7 +162,7 @@ jobs:
       - name: Purge Soft-Deleted Key Vault
         continue-on-error: true  # Don't fail if Key Vault doesn't exist
         run: |
-          kv_name="newsminds${{ github.event.inputs.environment }}kv"
+          kv_name="newsmind${{ github.event.inputs.environment }}kv"
 
           echo "🔑 Checking for soft-deleted Key Vault: $kv_name"
 

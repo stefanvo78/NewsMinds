@@ -100,7 +100,7 @@ jobs:
       - name: Create Resource Group (if needed)
         run: |
           az group create \
-            --name "nminds-${{ env.ENVIRONMENT }}-rg" \
+            --name "newsmind-${{ env.ENVIRONMENT }}-rg" \
             --location "eastus2" \
             --tags Environment=${{ env.ENVIRONMENT }} Project=NewsMinds
 
@@ -115,7 +115,7 @@ jobs:
           echo ""
 
           az deployment group what-if \
-            --resource-group "nminds-${{ env.ENVIRONMENT }}-rg" \
+            --resource-group "newsmind-${{ env.ENVIRONMENT }}-rg" \
             --template-file infra/main.bicep \
             --parameters infra/environments/${{ env.ENVIRONMENT }}.bicepparam \
             --parameters sqlAdminLogin="$SQL_LOGIN" \
@@ -156,7 +156,7 @@ jobs:
       - name: Create Resource Group
         run: |
           az group create \
-            --name "nminds-${{ env.ENVIRONMENT }}-rg" \
+            --name "newsmind-${{ env.ENVIRONMENT }}-rg" \
             --location "eastus2" \
             --tags Environment=${{ env.ENVIRONMENT }} Project=NewsMinds ManagedBy=GitHubActions
 
@@ -172,13 +172,13 @@ jobs:
 
           # Deploy with Bicep
           deployment_output=$(az deployment group create \
-            --resource-group "nminds-${{ env.ENVIRONMENT }}-rg" \
+            --resource-group "newsmind-${{ env.ENVIRONMENT }}-rg" \
             --template-file infra/main.bicep \
             --parameters infra/environments/${{ env.ENVIRONMENT }}.bicepparam \
             --parameters sqlAdminLogin="$SQL_LOGIN" \
             --parameters sqlAdminPassword="$SQL_PASSWORD" \
             --parameters secretKey="$SECRET_KEY" \
-            --name "nminds-${{ env.ENVIRONMENT }}-$(date +%Y%m%d-%H%M%S)" \
+            --name "newsmind-${{ env.ENVIRONMENT }}-$(date +%Y%m%d-%H%M%S)" \
             --query properties.outputs \
             --output json)
 
@@ -205,7 +205,7 @@ jobs:
           echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| Environment | \`${{ env.ENVIRONMENT }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Resource Group | \`nminds-${{ env.ENVIRONMENT }}-rg\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Resource Group | \`newsmind-${{ env.ENVIRONMENT }}-rg\` |" >> $GITHUB_STEP_SUMMARY
           echo "| API URL | ${{ steps.deploy.outputs.api_url }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Key Vault | \`${{ steps.deploy.outputs.keyvault_name }}\` |" >> $GITHUB_STEP_SUMMARY
 
@@ -236,8 +236,8 @@ jobs:
         run: |
           # Get the latest deployment outputs
           outputs=$(az deployment group show \
-            --resource-group "nminds-${{ env.ENVIRONMENT }}-rg" \
-            --name "$(az deployment group list --resource-group nminds-${{ env.ENVIRONMENT }}-rg --query '[0].name' -o tsv)" \
+            --resource-group "newsmind-${{ env.ENVIRONMENT }}-rg" \
+            --name "$(az deployment group list --resource-group newsmind-${{ env.ENVIRONMENT }}-rg --query '[0].name' -o tsv)" \
             --query properties.outputs \
             --output json 2>/dev/null || echo '{}')
           
@@ -247,7 +247,7 @@ jobs:
           
           # Fallback to constructed names if outputs not available
           if [ -z "$acr_name" ]; then
-            acr_name="nminds${{ env.ENVIRONMENT }}acr"
+            acr_name="newsmind${{ env.ENVIRONMENT }}acr"
             acr_login_server="${acr_name}.azurecr.io"
           fi
           
@@ -287,8 +287,8 @@ jobs:
 
           # Configure the registry with admin credentials
           az containerapp registry set \
-            --name "nminds-${{ env.ENVIRONMENT }}-api" \
-            --resource-group "nminds-${{ env.ENVIRONMENT }}-rg" \
+            --name "newsmind-${{ env.ENVIRONMENT }}-api" \
+            --resource-group "newsmind-${{ env.ENVIRONMENT }}-rg" \
             --server ${{ steps.infra.outputs.acr_login_server }} \
             --username "${{ steps.acr_creds.outputs.username }}" \
             --password "${{ steps.acr_creds.outputs.password }}"
@@ -298,8 +298,8 @@ jobs:
           echo "🚀 Deploying new image..."
 
           az containerapp update \
-            --name "nminds-${{ env.ENVIRONMENT }}-api" \
-            --resource-group "nminds-${{ env.ENVIRONMENT }}-rg" \
+            --name "newsmind-${{ env.ENVIRONMENT }}-api" \
+            --resource-group "newsmind-${{ env.ENVIRONMENT }}-rg" \
             --image ${{ steps.infra.outputs.image_tag }}
 
           echo "✅ Deployment complete!"
@@ -326,8 +326,8 @@ jobs:
 
           # Get the SQL server FQDN
           sql_fqdn=$(az sql server show \
-            --name "nminds-${{ env.ENVIRONMENT }}-sql" \
-            --resource-group "nminds-${{ env.ENVIRONMENT }}-rg" \
+            --name "newsmind-${{ env.ENVIRONMENT }}-sql" \
+            --resource-group "newsmind-${{ env.ENVIRONMENT }}-rg" \
             --query fullyQualifiedDomainName \
             --output tsv)
 
@@ -349,4 +349,4 @@ jobs:
           echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| Image | \`${{ steps.infra.outputs.image_tag }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Container App | \`nminds-${{ env.ENVIRONMENT }}-api\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Container App | \`newsmind-${{ env.ENVIRONMENT }}-api\` |" >> $GITHUB_STEP_SUMMARY

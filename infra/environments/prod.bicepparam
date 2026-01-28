@@ -10,7 +10,7 @@
 //
 // Usage:
 //   az deployment group create \
-//     --resource-group newsminds-prod-rg \
+//     --resource-group newsmind-prod-rg \
 //     --template-file infra/main.bicep \
 //     --parameters infra/environments/prod.bicepparam \
 //     --parameters postgresAdminLogin=<from-keyvault> \
@@ -27,12 +27,18 @@ param environment = 'prod'
 param location = 'westus2'
 
 // Project name
-param projectName = 'newsminds'
+param projectName = 'newsmind'
 
-// PostgreSQL credentials - in production, use Azure Key Vault
+// SQL Server credentials - in production, use Azure Key Vault
 // or secure CI/CD variable injection
-param postgresAdminLogin = ''  // From CI/CD secrets
-param postgresAdminPassword = ''  // From CI/CD secrets
+param sqlAdminLogin = ''  // From CI/CD secrets
+param sqlAdminPassword = ''  // From CI/CD secrets
+
+// JWT secret key for authentication
+param secretKey = ''  // From CI/CD secrets
+
+// IP allowlist for ALL resource access
+param allowedIPs = []  // Configure for production
 
 // Production tags
 param tags = {

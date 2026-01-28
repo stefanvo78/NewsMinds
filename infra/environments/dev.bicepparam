@@ -10,7 +10,7 @@
 //
 // Usage:
 //   az deployment group create \
-//     --resource-group newsminds-dev-rg \
+//     --resource-group newsmind-dev-rg \
 //     --template-file infra/main.bicep \
 //     --parameters infra/environments/dev.bicepparam \
 //     --parameters sqlAdminLogin=newsmindsadmin \
@@ -26,7 +26,7 @@ param environment = 'dev'
 param location = 'eastus2'
 
 // Project name for resource naming
-param projectName = 'nminds'
+param projectName = 'newsmind'
 
 // SQL Server credentials - NEVER commit real passwords!
 // These are placeholders - pass real values via CLI or Key Vault

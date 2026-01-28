@@ -11,7 +11,7 @@
 //
 // Usage:
 //   az deployment group create \
-//     --resource-group newsminds-dev-rg \
+//     --resource-group newsmind-dev-rg \
 //     --template-file infra/main.bicep \
 //     --parameters infra/environments/dev.bicepparam
 // ============================================================================

@@ -45,21 +45,19 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
     supportsHttpsTrafficOnly: true
     accessTier: 'Hot'
   }
-}
-
-// File Service
-resource fileService 'Microsoft.Storage/storageAccounts/fileServices@2023-01-01' = {
-  parent: storageAccount
-  name: 'default'
-}
-
-// File Share for Qdrant data
-resource fileShare 'Microsoft.Storage/storageAccounts/fileServices/fileShares@2023-01-01' = {
-  parent: fileService
-  name: fileShareName
-  properties: {
-    shareQuota: fileShareQuotaGB
-    accessTier: 'TransactionOptimized'
+  
+  // Nested file service resource
+  resource fileService 'fileServices' = {
+    name: 'default'
+    
+    // Nested file share resource
+    resource share 'shares' = {
+      name: fileShareName
+      properties: {
+        shareQuota: fileShareQuotaGB
+        accessTier: 'TransactionOptimized'
+      }
+    }
   }
 }
 
@@ -74,7 +72,7 @@ output name string = storageAccount.name
 output id string = storageAccount.id
 
 @description('File share name')
-output fileShareName string = fileShare.name
+output fileShareName string = storageAccount::fileService::share.name
 
 @description('Storage account key (for mounting)')
 output accountKey string = storageAccount.listKeys().keys[0].value

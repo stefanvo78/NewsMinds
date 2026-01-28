@@ -55,8 +55,8 @@ def upgrade() -> None:
     hashed_password = pwd_context.hash(admin_password)
 
     # Insert admin user
-    # UUID must be stored as 32-char hex string (no hyphens) for SQLite compatibility
-    admin_uuid = uuid.uuid4().hex  # hex format without hyphens
+    # Use standard UUID format with hyphens for SQL Server UNIQUEIDENTIFIER compatibility
+    admin_uuid = str(uuid.uuid4())  # Standard format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
     op.execute(
         sa.text(
             """

@@ -120,7 +120,7 @@ jobs:
 
       - name: Delete Resource Group
         run: |
-          rg="newsminds-${{ github.event.inputs.environment }}-rg"
+          rg="nminds-${{ github.event.inputs.environment }}-rg"
 
           echo "🗑️  Deleting resource group: $rg"
           echo ""
@@ -153,7 +153,7 @@ jobs:
           echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| Environment | \`${{ github.event.inputs.environment }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Resource Group | \`newsminds-${{ github.event.inputs.environment }}-rg\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Resource Group | \`nminds-${{ github.event.inputs.environment }}-rg\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Status | Deletion initiated (async) |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "⚠️ **Note:** Deletion may take several minutes to complete." >> $GITHUB_STEP_SUMMARY

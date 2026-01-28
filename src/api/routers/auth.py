@@ -2,16 +2,18 @@
 Authentication endpoints: login, register, 2FA setup.
 """
 
+import pyotp
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import BaseModel
 from sqlalchemy import select
 
 from src.api.core.config import settings
-from src.api.core.deps import DbSession
-from src.api.core.rate_limit import limiter, RATE_LIMIT_AUTH, RATE_LIMIT_REGISTER
-from src.api.core.security import hash_password, verify_password, create_access_token
+from src.api.core.deps import CurrentUser, DbSession
+from src.api.core.rate_limit import RATE_LIMIT_AUTH, RATE_LIMIT_REGISTER, limiter
+from src.api.core.security import create_access_token, hash_password, verify_password
 from src.api.models import User
-from src.api.schemas import UserCreate, UserResponse, Token
+from src.api.schemas import Token, UserCreate, UserResponse
 
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -125,10 +127,6 @@ async def login(
 # =============================================================================
 # 2FA Setup Endpoints
 # =============================================================================
-
-from pydantic import BaseModel
-from src.api.core.deps import CurrentUser
-import pyotp
 
 
 class TOTPSetupResponse(BaseModel):

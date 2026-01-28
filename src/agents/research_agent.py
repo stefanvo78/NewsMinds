@@ -8,16 +8,14 @@ This agent uses LangGraph to orchestrate:
 4. Generating a final answer
 """
 
-from openai import OpenAI
-from langgraph.graph import StateGraph, END
-
-from src.api.core.config import settings
-from src.agents.state import ResearchAgentState
-from src.rag.retriever import rag_retriever
-
+from langgraph.graph import END, StateGraph
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from openai import OpenAI
 
+from src.agents.state import ResearchAgentState
+from src.api.core.config import settings
+from src.rag.retriever import rag_retriever
 
 # Lazy-load OpenAI client to allow app startup without API key
 _openai_client = None

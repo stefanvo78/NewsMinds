@@ -6,12 +6,12 @@ Claude (or any MCP-compatible LLM) can use.
 """
 
 import json
+
 from mcp.server import Server
 from mcp.types import (
-    Tool,
     TextContent,
+    Tool,
 )
-import httpx
 
 # Create the MCP server
 server = Server("news-search")

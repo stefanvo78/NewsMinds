@@ -7,14 +7,14 @@ This agent combines:
 - LLM reasoning for deciding what to do
 """
 
-from openai import OpenAI
-from langgraph.graph import StateGraph, END
-from typing import TypedDict, Annotated
+from typing import Annotated, TypedDict
+
+from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
+from openai import OpenAI
 
 from src.api.core.config import settings
 from src.rag.retriever import rag_retriever
-
 
 # Lazy-load OpenAI client to allow app startup without API key
 _openai_client = None

@@ -24,10 +24,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from src.api.models import Article
 from src.api.core.config import settings
+from src.api.models import Article
 from src.rag.retriever import rag_retriever
 
 
@@ -121,56 +121,56 @@ async def ingest_sample_data():
     sample_articles = [
         {
             "title": "OpenAI Announces GPT-5",
-            "content": """OpenAI has announced GPT-5, the latest version of their 
-            large language model. The new model shows significant improvements in 
-            reasoning capabilities and can now solve complex mathematical problems 
-            that previous versions struggled with. CEO Sam Altman stated that GPT-5 
-            represents a major step toward artificial general intelligence. The model 
-            will be available to ChatGPT Plus subscribers starting next month. 
+            "content": """OpenAI has announced GPT-5, the latest version of their
+            large language model. The new model shows significant improvements in
+            reasoning capabilities and can now solve complex mathematical problems
+            that previous versions struggled with. CEO Sam Altman stated that GPT-5
+            represents a major step toward artificial general intelligence. The model
+            will be available to ChatGPT Plus subscribers starting next month.
             Enterprise customers will get early access through the API.""",
             "source": "Tech News Daily",
         },
         {
             "title": "Anthropic Releases Claude 4",
-            "content": """Anthropic has released Claude 4, featuring enhanced 
-            reasoning and a 500K token context window. The new model excels at 
-            complex analysis tasks and code generation. Claude 4 introduces 
-            'constitutional AI' improvements that make it more helpful while 
-            maintaining strong safety guardrails. The model is available through 
-            the Anthropic API and Claude.ai. Pricing remains competitive with 
+            "content": """Anthropic has released Claude 4, featuring enhanced
+            reasoning and a 500K token context window. The new model excels at
+            complex analysis tasks and code generation. Claude 4 introduces
+            'constitutional AI' improvements that make it more helpful while
+            maintaining strong safety guardrails. The model is available through
+            the Anthropic API and Claude.ai. Pricing remains competitive with
             other frontier models.""",
             "source": "AI Weekly",
         },
         {
             "title": "Google DeepMind's New Breakthrough in Protein Folding",
-            "content": """Google DeepMind has announced a breakthrough in protein 
-            structure prediction. Their new AlphaFold 3 model can now predict 
-            protein-ligand interactions with unprecedented accuracy. This has 
-            major implications for drug discovery, potentially reducing the time 
-            to develop new medications by years. Pharmaceutical companies are 
-            already integrating the technology into their research pipelines. 
+            "content": """Google DeepMind has announced a breakthrough in protein
+            structure prediction. Their new AlphaFold 3 model can now predict
+            protein-ligand interactions with unprecedented accuracy. This has
+            major implications for drug discovery, potentially reducing the time
+            to develop new medications by years. Pharmaceutical companies are
+            already integrating the technology into their research pipelines.
             The model will be made available to academic researchers for free.""",
             "source": "Science Today",
         },
         {
             "title": "EU Passes Comprehensive AI Regulation",
-            "content": """The European Union has passed the AI Act, the world's 
-            first comprehensive regulation of artificial intelligence. The law 
-            categorizes AI systems by risk level and imposes strict requirements 
-            on high-risk applications. Companies will have 24 months to comply 
-            with most provisions. Tech industry groups have expressed concern 
-            about compliance costs, while consumer advocates praise the law 
+            "content": """The European Union has passed the AI Act, the world's
+            first comprehensive regulation of artificial intelligence. The law
+            categorizes AI systems by risk level and imposes strict requirements
+            on high-risk applications. Companies will have 24 months to comply
+            with most provisions. Tech industry groups have expressed concern
+            about compliance costs, while consumer advocates praise the law
             as a necessary step to protect citizens from AI harms.""",
             "source": "European Tech Report",
         },
         {
             "title": "Microsoft Integrates AI Across Office Suite",
-            "content": """Microsoft has rolled out Copilot AI integration across 
-            its entire Office 365 suite. Users can now generate documents, 
-            analyze spreadsheets, and create presentations using natural language 
-            commands. Early adopters report productivity gains of 20-30% for 
-            routine tasks. The feature is available to enterprise customers 
-            with Microsoft 365 E3 and E5 licenses. Consumer rollout is 
+            "content": """Microsoft has rolled out Copilot AI integration across
+            its entire Office 365 suite. Users can now generate documents,
+            analyze spreadsheets, and create presentations using natural language
+            commands. Early adopters report productivity gains of 20-30% for
+            routine tasks. The feature is available to enterprise customers
+            with Microsoft 365 E3 and E5 licenses. Consumer rollout is
             expected by Q3 2025.""",
             "source": "Business Tech Review",
         },

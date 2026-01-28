@@ -9,16 +9,16 @@ from uuid import uuid4
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Distance,
+    FieldCondition,
+    Filter,
+    MatchValue,
     PointStruct,
     VectorParams,
-    Filter,
-    FieldCondition,
-    MatchValue,
 )
 
 from src.api.core.config import settings
-from src.rag.embeddings import embedding_service
 from src.rag.chunking import Chunk
+from src.rag.embeddings import embedding_service
 
 
 class VectorStore:
@@ -67,7 +67,7 @@ class VectorStore:
         # Create points
         points = []
         ids = []
-        for chunk, embedding in zip(chunks, embeddings):
+        for chunk, embedding in zip(chunks, embeddings, strict=True):
             point_id = str(uuid4())
             ids.append(point_id)
             points.append(

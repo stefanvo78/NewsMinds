@@ -6,24 +6,10 @@
 //
 // Key features for NewsMinds agents:
 // - KEDA autoscaling (scale based on queue depth, cron, HTTP traffic)
-// - Dapr integration (service mesh, pub/sub, state management)
 // - Scale to zero (cost savings when agents are idle)
 // - Multiple revisions (canary deployments)
 // - Built-in ingress (HTTP/gRPC routing)
-//
-// Architecture:
-// ┌─────────────────────────────────────────────────────────┐
-// │              Container Apps Environment                  │
-// │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │
-// │  │  Collector  │  │  Analyzer   │  │ Synthesizer │     │
-// │  │    Agent    │  │    Agent    │  │    Agent    │     │
-// │  │ (KEDA cron) │  │(KEDA queue) │  │(KEDA events)│     │
-// │  └─────────────┘  └─────────────┘  └─────────────┘     │
-// │                    │                                    │
-// │              ┌─────┴─────┐                              │
-// │              │   Dapr    │ (pub/sub, state)            │
-// │              └───────────┘                              │
-// └─────────────────────────────────────────────────────────┘
+// - VNet integration for network security
 // ============================================================================
 
 // ----------------------------------------------------------------------------
@@ -44,6 +30,9 @@ param logAnalyticsWorkspaceId string
 
 @description('Enable zone redundancy (for production high availability)')
 param zoneRedundant bool = false
+
+@description('Subnet ID for VNet integration (optional)')
+param subnetId string = ''
 
 @description('Workload profile type')
 @allowed(['Consumption', 'D4', 'D8', 'D16', 'D32', 'E4', 'E8', 'E16', 'E32'])
@@ -71,9 +60,14 @@ resource containerAppsEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
     // Zone redundancy for high availability (production)
     zoneRedundant: zoneRedundant
 
+    // VNet configuration - integrate with subnet if provided
+    vnetConfiguration: !empty(subnetId) ? {
+      infrastructureSubnetId: subnetId
+      internal: false  // External ingress (accessible from internet with IP restrictions)
+    } : null
+
     // Workload profiles determine compute options
     // Consumption: Serverless, auto-scaling, pay-per-use
-    // Dedicated: Reserved compute for predictable workloads
     workloadProfiles: [
       {
         name: 'Consumption'
@@ -81,100 +75,12 @@ resource containerAppsEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
       }
     ]
 
-    // Dapr configuration (we'll enable per-app, not environment-wide)
-    // Dapr provides:
-    // - Service discovery
-    // - Pub/sub messaging
-    // - State management
-    // - Secret management
-
     // Peer authentication (mTLS between apps)
     peerAuthentication: {
       mtls: {
         enabled: true  // Encrypt traffic between container apps
       }
     }
-  }
-}
-
-// Dapr Component: Redis Pub/Sub
-// This allows agents to communicate via publish/subscribe pattern
-// Collector publishes "news.collected" -> Analyzer subscribes
-// Analyzer publishes "news.analyzed" -> Synthesizer subscribes
-resource daprPubSub 'Microsoft.App/managedEnvironments/daprComponents@2024-03-01' = {
-  parent: containerAppsEnv
-  name: 'pubsub-redis'
-  properties: {
-    componentType: 'pubsub.redis'
-    version: 'v1'
-    metadata: [
-      {
-        name: 'redisHost'
-        // This will be replaced with actual Redis hostname in environment config
-        // Using secretRef to avoid hardcoding
-        value: 'placeholder-to-be-set'
-      }
-      {
-        name: 'redisPassword'
-        secretRef: 'redis-password'
-      }
-      {
-        name: 'enableTLS'
-        value: 'true'
-      }
-    ]
-    secrets: [
-      {
-        name: 'redis-password'
-        // This is a placeholder - actual secret comes from Key Vault at deployment
-        value: 'placeholder-to-be-set'
-      }
-    ]
-    scopes: [
-      'collector-agent'
-      'analyzer-agent'
-      'synthesizer-agent'
-    ]
-  }
-}
-
-// Dapr Component: Redis State Store
-// Persistent state for agents (checkpoints, intermediate results)
-resource daprStateStore 'Microsoft.App/managedEnvironments/daprComponents@2024-03-01' = {
-  parent: containerAppsEnv
-  name: 'statestore-redis'
-  properties: {
-    componentType: 'state.redis'
-    version: 'v1'
-    metadata: [
-      {
-        name: 'redisHost'
-        value: 'placeholder-to-be-set'
-      }
-      {
-        name: 'redisPassword'
-        secretRef: 'redis-password'
-      }
-      {
-        name: 'enableTLS'
-        value: 'true'
-      }
-      {
-        name: 'actorStateStore'
-        value: 'true'  // Enable actor pattern support
-      }
-    ]
-    secrets: [
-      {
-        name: 'redis-password'
-        value: 'placeholder-to-be-set'
-      }
-    ]
-    scopes: [
-      'collector-agent'
-      'analyzer-agent'
-      'synthesizer-agent'
-    ]
   }
 }
 

@@ -33,9 +33,6 @@ class Settings(BaseSettings):
     # Database (Azure SQL)
     DATABASE_URL: str = ""  # Will be loaded from Key Vault in production
 
-    # Redis
-    REDIS_URL: str = ""
-
     # Azure Key Vault
     KEY_VAULT_URL: str = ""
 

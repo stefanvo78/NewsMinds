@@ -49,6 +49,9 @@ param autoPauseDelay int = 60  // Pause after 1 hour of inactivity
 @description('Minimum capacity (vCores) for serverless')
 param minCapacity string = '0.5'
 
+@description('Allowed IP addresses for firewall rules')
+param allowedIPs array = []
+
 // ----------------------------------------------------------------------------
 // RESOURCES
 // ----------------------------------------------------------------------------
@@ -63,11 +66,11 @@ resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' = {
     administratorLoginPassword: administratorPassword
     version: '12.0'
     minimalTlsVersion: '1.2'
-    publicNetworkAccess: 'Enabled'  // For dev; disable in prod
+    publicNetworkAccess: 'Enabled'  // Allow public access with firewall rules
   }
 }
 
-// Firewall rule: Allow Azure services
+// Firewall rule: Allow Azure services (needed for Container Apps)
 resource allowAzureServices 'Microsoft.Sql/servers/firewallRules@2023-08-01-preview' = {
   parent: sqlServer
   name: 'AllowAllAzureIps'
@@ -76,6 +79,16 @@ resource allowAzureServices 'Microsoft.Sql/servers/firewallRules@2023-08-01-prev
     endIpAddress: '0.0.0.0'
   }
 }
+
+// Firewall rules: Allow specific IPs
+resource allowedIPRules 'Microsoft.Sql/servers/firewallRules@2023-08-01-preview' = [for (ip, i) in allowedIPs: {
+  parent: sqlServer
+  name: 'AllowIP-${i}'
+  properties: {
+    startIpAddress: ip
+    endIpAddress: ip
+  }
+}]
 
 // SQL Database
 resource sqlDatabase 'Microsoft.Sql/servers/databases@2023-08-01-preview' = {

@@ -38,6 +38,9 @@ param softDeleteRetentionInDays int = 7
 @description('Enable purge protection (prevents permanent deletion)')
 param enablePurgeProtection bool = false  // Set to true for prod
 
+@description('Allowed IP addresses for network rules')
+param allowedIPs array = []
+
 // ----------------------------------------------------------------------------
 // RESOURCE
 // ----------------------------------------------------------------------------
@@ -71,11 +74,13 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
     // NOTE: Only set when true; Azure API rejects explicit false values
     enablePurgeProtection: enablePurgeProtection ? true : null
 
-    // Allow Azure services to bypass network rules
-    // Needed for App Service, Container Apps to access secrets
+    // Network ACLs - restrict access to allowed IPs and Azure services
     networkAcls: {
-      defaultAction: 'Allow'  // In production, consider 'Deny' with specific rules
+      defaultAction: empty(allowedIPs) ? 'Allow' : 'Deny'
       bypass: 'AzureServices'
+      ipRules: [for ip in allowedIPs: {
+        value: ip
+      }]
     }
   }
 }

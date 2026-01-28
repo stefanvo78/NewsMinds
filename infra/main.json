@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "9814774760673140959"
+      "templateHash": "2220426957199089358"
     }
   },
   "parameters": {
@@ -58,6 +58,13 @@
       "metadata": {
         "description": "Tags to apply to all resources"
       }
+    },
+    "allowedIPs": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Allowed IP addresses for access. These IPs can access all resources."
+      }
     }
   },
   "variables": {
@@ -66,12 +73,277 @@
     "defaultTags": {
       "Project": "[parameters('projectName')]",
       "Environment": "[parameters('environment')]",
-      "ManagedBy": "Bicep",
-      "Repository": "github.com/yourusername/NewsMinds"
+      "ManagedBy": "Bicep"
     },
     "allTags": "[union(variables('defaultTags'), parameters('tags'))]"
   },
   "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "vnet-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('{0}-vnet', variables('resourcePrefix'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('allTags')]"
+          },
+          "allowedIPs": {
+            "value": "[parameters('allowedIPs')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "12226403083170806961"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the Virtual Network"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags to apply"
+              }
+            },
+            "addressPrefix": {
+              "type": "string",
+              "defaultValue": "10.0.0.0/16",
+              "metadata": {
+                "description": "VNet address space"
+              }
+            },
+            "containerAppsSubnetPrefix": {
+              "type": "string",
+              "defaultValue": "10.0.0.0/23",
+              "metadata": {
+                "description": "Container Apps subnet address prefix"
+              }
+            },
+            "sqlSubnetPrefix": {
+              "type": "string",
+              "defaultValue": "10.0.2.0/24",
+              "metadata": {
+                "description": "SQL subnet address prefix"
+              }
+            },
+            "keyVaultSubnetPrefix": {
+              "type": "string",
+              "defaultValue": "10.0.3.0/24",
+              "metadata": {
+                "description": "Key Vault subnet address prefix"
+              }
+            },
+            "allowedIPs": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Allowed IP addresses for NSG rules"
+              }
+            }
+          },
+          "variables": {
+            "copy": [
+              {
+                "name": "allowedIPsCidr",
+                "count": "[length(parameters('allowedIPs'))]",
+                "input": "[if(endsWith(parameters('allowedIPs')[copyIndex('allowedIPsCidr')], '/32'), parameters('allowedIPs')[copyIndex('allowedIPsCidr')], format('{0}/32', parameters('allowedIPs')[copyIndex('allowedIPsCidr')]))]"
+              }
+            ]
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/networkSecurityGroups",
+              "apiVersion": "2023-11-01",
+              "name": "[format('{0}-nsg', parameters('name'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "securityRules": [
+                  {
+                    "name": "AllowHTTPSFromAllowedIPs",
+                    "properties": {
+                      "priority": 100,
+                      "direction": "Inbound",
+                      "access": "Allow",
+                      "protocol": "Tcp",
+                      "sourceAddressPrefixes": "[if(empty(parameters('allowedIPs')), createArray('0.0.0.0/0'), variables('allowedIPsCidr'))]",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "*",
+                      "destinationPortRange": "443"
+                    }
+                  },
+                  {
+                    "name": "AllowAzureLoadBalancer",
+                    "properties": {
+                      "priority": 110,
+                      "direction": "Inbound",
+                      "access": "Allow",
+                      "protocol": "*",
+                      "sourceAddressPrefix": "AzureLoadBalancer",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "*",
+                      "destinationPortRange": "*"
+                    }
+                  },
+                  {
+                    "name": "AllowVNetInbound",
+                    "properties": {
+                      "priority": 120,
+                      "direction": "Inbound",
+                      "access": "Allow",
+                      "protocol": "*",
+                      "sourceAddressPrefix": "VirtualNetwork",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "VirtualNetwork",
+                      "destinationPortRange": "*"
+                    }
+                  },
+                  {
+                    "name": "DenyAllInbound",
+                    "properties": {
+                      "priority": 4096,
+                      "direction": "Inbound",
+                      "access": "Deny",
+                      "protocol": "*",
+                      "sourceAddressPrefix": "*",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "*",
+                      "destinationPortRange": "*"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Network/virtualNetworks",
+              "apiVersion": "2023-11-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "addressSpace": {
+                  "addressPrefixes": [
+                    "[parameters('addressPrefix')]"
+                  ]
+                },
+                "subnets": [
+                  {
+                    "name": "container-apps",
+                    "properties": {
+                      "addressPrefix": "[parameters('containerAppsSubnetPrefix')]",
+                      "networkSecurityGroup": {
+                        "id": "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-nsg', parameters('name')))]"
+                      },
+                      "delegations": [
+                        {
+                          "name": "Microsoft.App.environments",
+                          "properties": {
+                            "serviceName": "Microsoft.App/environments"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "name": "sql",
+                    "properties": {
+                      "addressPrefix": "[parameters('sqlSubnetPrefix')]",
+                      "networkSecurityGroup": {
+                        "id": "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-nsg', parameters('name')))]"
+                      },
+                      "privateEndpointNetworkPolicies": "Disabled"
+                    }
+                  },
+                  {
+                    "name": "keyvault",
+                    "properties": {
+                      "addressPrefix": "[parameters('keyVaultSubnetPrefix')]",
+                      "networkSecurityGroup": {
+                        "id": "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-nsg', parameters('name')))]"
+                      },
+                      "privateEndpointNetworkPolicies": "Disabled"
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-nsg', parameters('name')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "metadata": {
+                "description": "VNet resource ID"
+              },
+              "value": "[resourceId('Microsoft.Network/virtualNetworks', parameters('name'))]"
+            },
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "VNet name"
+              },
+              "value": "[parameters('name')]"
+            },
+            "containerAppsSubnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Container Apps subnet ID"
+              },
+              "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', parameters('name')), '2023-11-01').subnets[0].id]"
+            },
+            "sqlSubnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "SQL subnet ID"
+              },
+              "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', parameters('name')), '2023-11-01').subnets[1].id]"
+            },
+            "keyVaultSubnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Key Vault subnet ID"
+              },
+              "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', parameters('name')), '2023-11-01').subnets[2].id]"
+            },
+            "nsgId": {
+              "type": "string",
+              "metadata": {
+                "description": "NSG ID"
+              },
+              "value": "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-nsg', parameters('name')))]"
+            }
+          }
+        }
+      }
+    },
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
@@ -90,6 +362,9 @@
           },
           "tags": {
             "value": "[variables('allTags')]"
+          },
+          "allowedIPs": {
+            "value": "[parameters('allowedIPs')]"
           }
         },
         "template": {
@@ -99,7 +374,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "396639885224159503"
+              "templateHash": "12269051632089337574"
             }
           },
           "parameters": {
@@ -146,6 +421,13 @@
               "metadata": {
                 "description": "Enable purge protection (prevents permanent deletion)"
               }
+            },
+            "allowedIPs": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Allowed IP addresses for network rules"
+              }
             }
           },
           "resources": [
@@ -166,7 +448,16 @@
                 "softDeleteRetentionInDays": "[parameters('softDeleteRetentionInDays')]",
                 "enablePurgeProtection": "[if(parameters('enablePurgeProtection'), true(), null())]",
                 "networkAcls": {
-                  "defaultAction": "Allow",
+                  "copy": [
+                    {
+                      "name": "ipRules",
+                      "count": "[length(parameters('allowedIPs'))]",
+                      "input": {
+                        "value": "[parameters('allowedIPs')[copyIndex('ipRules')]]"
+                      }
+                    }
+                  ],
+                  "defaultAction": "[if(empty(parameters('allowedIPs')), 'Allow', 'Deny')]",
                   "bypass": "AzureServices"
                 }
               }
@@ -608,6 +899,9 @@
           },
           "keyVaultName": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyVault-deployment'), '2025-04-01').outputs.name.value]"
+          },
+          "allowedIPs": {
+            "value": "[parameters('allowedIPs')]"
           }
         },
         "template": {
@@ -617,7 +911,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "1946848280828333296"
+              "templateHash": "13627813825770309756"
             }
           },
           "parameters": {
@@ -694,6 +988,13 @@
               "metadata": {
                 "description": "Minimum capacity (vCores) for serverless"
               }
+            },
+            "allowedIPs": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Allowed IP addresses for firewall rules"
+              }
             }
           },
           "resources": [
@@ -718,6 +1019,22 @@
               "properties": {
                 "startIpAddress": "0.0.0.0",
                 "endIpAddress": "0.0.0.0"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('serverName'))]"
+              ]
+            },
+            {
+              "copy": {
+                "name": "allowedIPRules",
+                "count": "[length(parameters('allowedIPs'))]"
+              },
+              "type": "Microsoft.Sql/servers/firewallRules",
+              "apiVersion": "2023-08-01-preview",
+              "name": "[format('{0}/{1}', parameters('serverName'), format('AllowIP-{0}', copyIndex()))]",
+              "properties": {
+                "startIpAddress": "[parameters('allowedIPs')[copyIndex()]]",
+                "endIpAddress": "[parameters('allowedIPs')[copyIndex()]]"
               },
               "dependsOn": [
                 "[resourceId('Microsoft.Sql/servers', parameters('serverName'))]"
@@ -806,205 +1123,6 @@
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
-      "name": "redis-deployment",
-      "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "name": {
-            "value": "[format('{0}-redis', variables('resourcePrefix'))]"
-          },
-          "location": {
-            "value": "[parameters('location')]"
-          },
-          "tags": {
-            "value": "[variables('allTags')]"
-          },
-          "keyVaultName": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyVault-deployment'), '2025-04-01').outputs.name.value]"
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.39.26.7824",
-              "templateHash": "4025827356803606977"
-            }
-          },
-          "parameters": {
-            "name": {
-              "type": "string",
-              "metadata": {
-                "description": "Name of the Redis Cache instance"
-              }
-            },
-            "location": {
-              "type": "string",
-              "metadata": {
-                "description": "Azure region for the cache"
-              }
-            },
-            "tags": {
-              "type": "object",
-              "defaultValue": {},
-              "metadata": {
-                "description": "Tags to apply to the resource"
-              }
-            },
-            "skuName": {
-              "type": "string",
-              "defaultValue": "Basic",
-              "allowedValues": [
-                "Basic",
-                "Standard",
-                "Premium"
-              ],
-              "metadata": {
-                "description": "SKU: Basic (dev), Standard (HA), Premium (clustering)"
-              }
-            },
-            "skuFamily": {
-              "type": "string",
-              "defaultValue": "C",
-              "allowedValues": [
-                "C",
-                "P"
-              ],
-              "metadata": {
-                "description": "SKU Family: C (Basic/Standard), P (Premium)"
-              }
-            },
-            "skuCapacity": {
-              "type": "int",
-              "defaultValue": 0,
-              "minValue": 0,
-              "maxValue": 6,
-              "metadata": {
-                "description": "Cache size: 0=250MB, 1=1GB, 2=2.5GB, etc."
-              }
-            },
-            "enableNonSslPort": {
-              "type": "bool",
-              "defaultValue": false,
-              "metadata": {
-                "description": "Enable non-SSL port (6379). Disable for production."
-              }
-            },
-            "minimumTlsVersion": {
-              "type": "string",
-              "defaultValue": "1.2",
-              "allowedValues": [
-                "1.0",
-                "1.1",
-                "1.2"
-              ],
-              "metadata": {
-                "description": "Minimum TLS version"
-              }
-            },
-            "keyVaultName": {
-              "type": "string",
-              "metadata": {
-                "description": "Name of the Key Vault to store connection string"
-              }
-            }
-          },
-          "resources": [
-            {
-              "type": "Microsoft.Cache/redis",
-              "apiVersion": "2023-08-01",
-              "name": "[parameters('name')]",
-              "location": "[parameters('location')]",
-              "tags": "[parameters('tags')]",
-              "properties": {
-                "sku": {
-                  "name": "[parameters('skuName')]",
-                  "family": "[parameters('skuFamily')]",
-                  "capacity": "[parameters('skuCapacity')]"
-                },
-                "enableNonSslPort": "[parameters('enableNonSslPort')]",
-                "minimumTlsVersion": "[parameters('minimumTlsVersion')]",
-                "redisConfiguration": {
-                  "maxmemory-policy": "volatile-lru"
-                },
-                "publicNetworkAccess": "Enabled"
-              }
-            },
-            {
-              "type": "Microsoft.KeyVault/vaults/secrets",
-              "apiVersion": "2023-07-01",
-              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'RedisConnectionString')]",
-              "properties": {
-                "value": "[format('rediss://:{0}@{1}:{2}', listKeys(resourceId('Microsoft.Cache/redis', parameters('name')), '2023-08-01').primaryKey, reference(resourceId('Microsoft.Cache/redis', parameters('name')), '2023-08-01').hostName, reference(resourceId('Microsoft.Cache/redis', parameters('name')), '2023-08-01').sslPort)]",
-                "contentType": "text/plain",
-                "attributes": {
-                  "enabled": true
-                }
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Cache/redis', parameters('name'))]"
-              ]
-            },
-            {
-              "type": "Microsoft.KeyVault/vaults/secrets",
-              "apiVersion": "2023-07-01",
-              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'RedisPrimaryKey')]",
-              "properties": {
-                "value": "[listKeys(resourceId('Microsoft.Cache/redis', parameters('name')), '2023-08-01').primaryKey]",
-                "contentType": "text/plain",
-                "attributes": {
-                  "enabled": true
-                }
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Cache/redis', parameters('name'))]"
-              ]
-            }
-          ],
-          "outputs": {
-            "id": {
-              "type": "string",
-              "metadata": {
-                "description": "Redis Cache resource ID"
-              },
-              "value": "[resourceId('Microsoft.Cache/redis', parameters('name'))]"
-            },
-            "name": {
-              "type": "string",
-              "metadata": {
-                "description": "Redis Cache name"
-              },
-              "value": "[parameters('name')]"
-            },
-            "hostname": {
-              "type": "string",
-              "metadata": {
-                "description": "Redis Cache hostname"
-              },
-              "value": "[reference(resourceId('Microsoft.Cache/redis', parameters('name')), '2023-08-01').hostName]"
-            },
-            "sslPort": {
-              "type": "int",
-              "metadata": {
-                "description": "Redis SSL port (6380)"
-              },
-              "value": "[reference(resourceId('Microsoft.Cache/redis', parameters('name')), '2023-08-01').sslPort]"
-            }
-          }
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'keyVault-deployment')]"
-      ]
-    },
-    {
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2025-04-01",
       "name": "containerAppsEnv-deployment",
       "properties": {
         "expressionEvaluationOptions": {
@@ -1023,6 +1141,9 @@
           },
           "logAnalyticsWorkspaceId": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'logAnalytics-deployment'), '2025-04-01').outputs.workspaceId.value]"
+          },
+          "subnetId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'vnet-deployment'), '2025-04-01').outputs.containerAppsSubnetId.value]"
           }
         },
         "template": {
@@ -1032,7 +1153,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "105842677036211507"
+              "templateHash": "9391347944709385534"
             }
           },
           "parameters": {
@@ -1066,6 +1187,13 @@
               "defaultValue": false,
               "metadata": {
                 "description": "Enable zone redundancy (for production high availability)"
+              }
+            },
+            "subnetId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Subnet ID for VNet integration (optional)"
               }
             },
             "workloadProfileType": {
@@ -1103,6 +1231,7 @@
                   }
                 },
                 "zoneRedundant": "[parameters('zoneRedundant')]",
+                "vnetConfiguration": "[if(not(empty(parameters('subnetId'))), createObject('infrastructureSubnetId', parameters('subnetId'), 'internal', false()), null())]",
                 "workloadProfiles": [
                   {
                     "name": "Consumption",
@@ -1115,84 +1244,6 @@
                   }
                 }
               }
-            },
-            {
-              "type": "Microsoft.App/managedEnvironments/daprComponents",
-              "apiVersion": "2024-03-01",
-              "name": "[format('{0}/{1}', parameters('name'), 'pubsub-redis')]",
-              "properties": {
-                "componentType": "pubsub.redis",
-                "version": "v1",
-                "metadata": [
-                  {
-                    "name": "redisHost",
-                    "value": "placeholder-to-be-set"
-                  },
-                  {
-                    "name": "redisPassword",
-                    "secretRef": "redis-password"
-                  },
-                  {
-                    "name": "enableTLS",
-                    "value": "true"
-                  }
-                ],
-                "secrets": [
-                  {
-                    "name": "redis-password",
-                    "value": "placeholder-to-be-set"
-                  }
-                ],
-                "scopes": [
-                  "collector-agent",
-                  "analyzer-agent",
-                  "synthesizer-agent"
-                ]
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.App/managedEnvironments', parameters('name'))]"
-              ]
-            },
-            {
-              "type": "Microsoft.App/managedEnvironments/daprComponents",
-              "apiVersion": "2024-03-01",
-              "name": "[format('{0}/{1}', parameters('name'), 'statestore-redis')]",
-              "properties": {
-                "componentType": "state.redis",
-                "version": "v1",
-                "metadata": [
-                  {
-                    "name": "redisHost",
-                    "value": "placeholder-to-be-set"
-                  },
-                  {
-                    "name": "redisPassword",
-                    "secretRef": "redis-password"
-                  },
-                  {
-                    "name": "enableTLS",
-                    "value": "true"
-                  },
-                  {
-                    "name": "actorStateStore",
-                    "value": "true"
-                  }
-                ],
-                "secrets": [
-                  {
-                    "name": "redis-password",
-                    "value": "placeholder-to-be-set"
-                  }
-                ],
-                "scopes": [
-                  "collector-agent",
-                  "analyzer-agent",
-                  "synthesizer-agent"
-                ]
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.App/managedEnvironments', parameters('name'))]"
-              ]
             }
           ],
           "outputs": {
@@ -1228,7 +1279,8 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'logAnalytics-deployment')]"
+        "[resourceId('Microsoft.Resources/deployments', 'logAnalytics-deployment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'vnet-deployment')]"
       ]
     },
     {
@@ -1259,17 +1311,14 @@
           "keyVaultName": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyVault-deployment'), '2025-04-01').outputs.name.value]"
           },
-          "acrLoginServer": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'containerRegistry-deployment'), '2025-04-01').outputs.loginServer.value]"
-          },
-          "acrName": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'containerRegistry-deployment'), '2025-04-01').outputs.name.value]"
-          },
           "databaseUrl": {
             "value": "[format('mssql+aioodbc://{0}:{1}@{2}:1433/newsminds?driver=ODBC+Driver+18+for+SQL+Server&encrypt=yes&TrustServerCertificate=no', parameters('sqlAdminLogin'), parameters('sqlAdminPassword'), reference(resourceId('Microsoft.Resources/deployments', 'sqlDatabase-deployment'), '2025-04-01').outputs.fqdn.value)]"
           },
           "secretKey": {
             "value": "[parameters('secretKey')]"
+          },
+          "allowedIPs": {
+            "value": "[parameters('allowedIPs')]"
           }
         },
         "template": {
@@ -1279,7 +1328,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "1047039187418158842"
+              "templateHash": "480503610849017224"
             }
           },
           "parameters": {
@@ -1372,6 +1421,13 @@
               "metadata": {
                 "description": "Maximum number of replicas"
               }
+            },
+            "allowedIPs": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Allowed IP addresses for access (CIDR notation). Empty array means public access."
+              }
             }
           },
           "resources": [
@@ -1388,6 +1444,17 @@
                 "managedEnvironmentId": "[parameters('containerAppsEnvId')]",
                 "configuration": {
                   "ingress": {
+                    "copy": [
+                      {
+                        "name": "ipSecurityRestrictions",
+                        "count": "[length(parameters('allowedIPs'))]",
+                        "input": {
+                          "name": "[format('allow-{0}', copyIndex('ipSecurityRestrictions'))]",
+                          "ipAddressRange": "[if(endsWith(parameters('allowedIPs')[copyIndex('ipSecurityRestrictions')], '/32'), parameters('allowedIPs')[copyIndex('ipSecurityRestrictions')], format('{0}/32', parameters('allowedIPs')[copyIndex('ipSecurityRestrictions')]))]",
+                          "action": "Allow"
+                        }
+                      }
+                    ],
                     "external": true,
                     "targetPort": 8000,
                     "transport": "http",
@@ -1492,20 +1559,6 @@
                   }
                 }
               }
-            },
-            {
-              "condition": "[not(equals(parameters('acrName'), ''))]",
-              "type": "Microsoft.Authorization/roleAssignments",
-              "apiVersion": "2022-04-01",
-              "name": "[guid(resourceGroup().id, parameters('name'), parameters('acrName'), 'acrpull')]",
-              "properties": {
-                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')]",
-                "principalId": "[reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01', 'full').identity.principalId]",
-                "principalType": "ServicePrincipal"
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.App/containerApps', parameters('name'))]"
-              ]
             }
           ],
           "outputs": {
@@ -1543,13 +1596,266 @@
       "dependsOn": [
         "[resourceId('Microsoft.Resources/deployments', 'appInsights-deployment')]",
         "[resourceId('Microsoft.Resources/deployments', 'containerAppsEnv-deployment')]",
-        "[resourceId('Microsoft.Resources/deployments', 'containerRegistry-deployment')]",
         "[resourceId('Microsoft.Resources/deployments', 'keyVault-deployment')]",
         "[resourceId('Microsoft.Resources/deployments', 'sqlDatabase-deployment')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "alerts-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "namePrefix": {
+            "value": "[variables('resourcePrefix')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('allTags')]"
+          },
+          "appInsightsId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appInsights-deployment'), '2025-04-01').outputs.id.value]"
+          },
+          "containerAppId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'apiContainerApp-deployment'), '2025-04-01').outputs.id.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "15112350137992822894"
+            }
+          },
+          "parameters": {
+            "namePrefix": {
+              "type": "string",
+              "metadata": {
+                "description": "Base name for alert resources"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags to apply"
+              }
+            },
+            "appInsightsId": {
+              "type": "string",
+              "metadata": {
+                "description": "Application Insights resource ID"
+              }
+            },
+            "containerAppId": {
+              "type": "string",
+              "metadata": {
+                "description": "Container App resource ID"
+              }
+            },
+            "alertEmailAddresses": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Email addresses for alert notifications"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Insights/actionGroups",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}-alerts-ag', parameters('namePrefix'))]",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "copy": [
+                  {
+                    "name": "emailReceivers",
+                    "count": "[length(parameters('alertEmailAddresses'))]",
+                    "input": {
+                      "name": "[format('Email-{0}', split(parameters('alertEmailAddresses')[copyIndex('emailReceivers')], '@')[0])]",
+                      "emailAddress": "[parameters('alertEmailAddresses')[copyIndex('emailReceivers')]]",
+                      "useCommonAlertSchema": true
+                    }
+                  }
+                ],
+                "groupShortName": "NMindsAlert",
+                "enabled": true
+              }
+            },
+            {
+              "type": "Microsoft.Insights/metricAlerts",
+              "apiVersion": "2018-03-01",
+              "name": "[format('{0}-high-error-rate', parameters('namePrefix'))]",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "description": "Alert when error rate exceeds 5% over 5 minutes",
+                "severity": 2,
+                "enabled": true,
+                "scopes": [
+                  "[parameters('appInsightsId')]"
+                ],
+                "evaluationFrequency": "PT5M",
+                "windowSize": "PT5M",
+                "criteria": {
+                  "odata.type": "Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria",
+                  "allOf": [
+                    {
+                      "name": "HighErrorRate",
+                      "metricName": "requests/failed",
+                      "metricNamespace": "microsoft.insights/components",
+                      "operator": "GreaterThan",
+                      "threshold": 10,
+                      "timeAggregation": "Count",
+                      "criterionType": "StaticThresholdCriterion"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "actionGroupId": "[resourceId('Microsoft.Insights/actionGroups', format('{0}-alerts-ag', parameters('namePrefix')))]"
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Insights/actionGroups', format('{0}-alerts-ag', parameters('namePrefix')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Insights/metricAlerts",
+              "apiVersion": "2018-03-01",
+              "name": "[format('{0}-slow-response', parameters('namePrefix'))]",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "description": "Alert when average response time exceeds 2 seconds",
+                "severity": 3,
+                "enabled": true,
+                "scopes": [
+                  "[parameters('appInsightsId')]"
+                ],
+                "evaluationFrequency": "PT5M",
+                "windowSize": "PT5M",
+                "criteria": {
+                  "odata.type": "Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria",
+                  "allOf": [
+                    {
+                      "name": "SlowResponse",
+                      "metricName": "requests/duration",
+                      "metricNamespace": "microsoft.insights/components",
+                      "operator": "GreaterThan",
+                      "threshold": 2000,
+                      "timeAggregation": "Average",
+                      "criterionType": "StaticThresholdCriterion"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "actionGroupId": "[resourceId('Microsoft.Insights/actionGroups', format('{0}-alerts-ag', parameters('namePrefix')))]"
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Insights/actionGroups', format('{0}-alerts-ag', parameters('namePrefix')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Insights/metricAlerts",
+              "apiVersion": "2018-03-01",
+              "name": "[format('{0}-container-health', parameters('namePrefix'))]",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "description": "Alert when container app replicas drop to zero unexpectedly",
+                "severity": 1,
+                "enabled": true,
+                "scopes": [
+                  "[parameters('containerAppId')]"
+                ],
+                "evaluationFrequency": "PT1M",
+                "windowSize": "PT5M",
+                "criteria": {
+                  "odata.type": "Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria",
+                  "allOf": [
+                    {
+                      "name": "NoReplicas",
+                      "metricName": "Replicas",
+                      "metricNamespace": "Microsoft.App/containerApps",
+                      "operator": "LessThan",
+                      "threshold": 1,
+                      "timeAggregation": "Average",
+                      "criterionType": "StaticThresholdCriterion"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "actionGroupId": "[resourceId('Microsoft.Insights/actionGroups', format('{0}-alerts-ag', parameters('namePrefix')))]"
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Insights/actionGroups', format('{0}-alerts-ag', parameters('namePrefix')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "actionGroupId": {
+              "type": "string",
+              "metadata": {
+                "description": "Action Group ID"
+              },
+              "value": "[resourceId('Microsoft.Insights/actionGroups', format('{0}-alerts-ag', parameters('namePrefix')))]"
+            },
+            "actionGroupName": {
+              "type": "string",
+              "metadata": {
+                "description": "Action Group Name"
+              },
+              "value": "[format('{0}-alerts-ag', parameters('namePrefix'))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'apiContainerApp-deployment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'appInsights-deployment')]"
       ]
     }
   ],
   "outputs": {
+    "vnetName": {
+      "type": "string",
+      "metadata": {
+        "description": "VNet name"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'vnet-deployment'), '2025-04-01').outputs.name.value]"
+    },
+    "nsgId": {
+      "type": "string",
+      "metadata": {
+        "description": "NSG ID"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'vnet-deployment'), '2025-04-01').outputs.nsgId.value]"
+    },
     "keyVaultName": {
       "type": "string",
       "metadata": {
@@ -1577,13 +1883,6 @@
         "description": "SQL Server FQDN"
       },
       "value": "[reference(resourceId('Microsoft.Resources/deployments', 'sqlDatabase-deployment'), '2025-04-01').outputs.fqdn.value]"
-    },
-    "redisHostname": {
-      "type": "string",
-      "metadata": {
-        "description": "Redis hostname"
-      },
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'redis-deployment'), '2025-04-01').outputs.hostname.value]"
     },
     "containerAppsEnvId": {
       "type": "string",

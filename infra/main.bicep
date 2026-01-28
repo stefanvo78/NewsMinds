@@ -4,6 +4,11 @@
 // This is the entry point for deploying all Azure resources.
 // It orchestrates the deployment of individual modules in the correct order.
 //
+// Security:
+// - VNet with NSG restricts network access
+// - All resources protected by IP allowlist
+// - Container Apps ingress restricted to allowed IPs
+//
 // Usage:
 //   az deployment group create \
 //     --resource-group newsminds-dev-rg \
@@ -14,9 +19,6 @@
 // ----------------------------------------------------------------------------
 // PARAMETERS
 // ----------------------------------------------------------------------------
-// Parameters are inputs to the template. They allow customization per environment.
-// The @allowed decorator restricts values to prevent mistakes.
-// The @description decorator documents the parameter (shows in Azure Portal).
 
 @description('Environment name (dev, staging, prod)')
 @allowed(['dev', 'staging', 'prod'])
@@ -40,19 +42,15 @@ param sqlAdminPassword string
 @secure()
 param secretKey string
 
-
 @description('Tags to apply to all resources')
 param tags object = {}
 
-@description('Allowed IP addresses for API access. Empty array means public access.')
+@description('Allowed IP addresses for access. These IPs can access all resources.')
 param allowedIPs array = []
 
 // ----------------------------------------------------------------------------
 // VARIABLES
 // ----------------------------------------------------------------------------
-// Variables are computed values used throughout the template.
-// We use naming conventions that follow Azure best practices.
-// See: https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/resource-naming
 
 // Resource naming convention: {project}-{environment}-{resource-type}
 var resourcePrefix = '${projectName}-${environment}'
@@ -65,7 +63,6 @@ var defaultTags = {
   Project: projectName
   Environment: environment
   ManagedBy: 'Bicep'
-  Repository: 'github.com/yourusername/NewsMinds'
 }
 var allTags = union(defaultTags, tags)
 
@@ -73,41 +70,50 @@ var allTags = union(defaultTags, tags)
 // MODULES
 // ----------------------------------------------------------------------------
 // Modules are deployed in dependency order:
-// 1. Key Vault (stores secrets for other resources)
-// 2. Log Analytics + Application Insights (monitoring foundation)
-// 3. PostgreSQL (data layer)
-// 4. Redis Cache (caching layer)
-// 5. Container Apps Environment (agent runtime)
-// 6. App Service (API layer)
+// 1. VNet (network foundation with NSG)
+// 2. Key Vault (stores secrets)
+// 3. Log Analytics + Application Insights (monitoring)
+// 4. SQL Database (data layer)
+// 5. Container Apps Environment (with VNet integration)
+// 6. Container App API (API layer)
+
+// --- Virtual Network ---
+// Network security foundation with NSG
+module vnet 'modules/vnet.bicep' = {
+  name: 'vnet-deployment'
+  params: {
+    name: '${resourcePrefix}-vnet'
+    location: location
+    tags: allTags
+    allowedIPs: allowedIPs
+  }
+}
 
 // --- Key Vault ---
 // Stores secrets like database connection strings, API keys
-// Other resources will reference secrets from here
 module keyVault 'modules/key-vault.bicep' = {
   name: 'keyVault-deployment'
   params: {
-    name: '${resourcePrefixNoHyphens}kv'  // Key Vault names: 3-24 chars, alphanumeric only
+    name: '${resourcePrefixNoHyphens}kv'
     location: location
     tags: allTags
+    allowedIPs: allowedIPs
   }
 }
 
 // --- Container Registry ---
 // Private Docker registry for our container images
-// GitHub Actions will push images here, Container Apps will pull from here
 module containerRegistry 'modules/container-registry.bicep' = {
   name: 'containerRegistry-deployment'
   params: {
-    name: '${resourcePrefixNoHyphens}acr'  // ACR names: alphanumeric only
+    name: '${resourcePrefixNoHyphens}acr'
     location: location
     tags: allTags
   }
 }
 
-
 // --- Log Analytics Workspace ---
 // Central logging destination for all resources
-// Application Insights sends data here
 module logAnalytics 'modules/log-analytics.bicep' = {
   name: 'logAnalytics-deployment'
   params: {
@@ -118,8 +124,7 @@ module logAnalytics 'modules/log-analytics.bicep' = {
 }
 
 // --- Application Insights ---
-// Application Performance Monitoring (APM) for our API and agents
-// Provides request tracing, dependency tracking, error logging
+// Application Performance Monitoring (APM) for our API
 module appInsights 'modules/app-insights.bicep' = {
   name: 'appInsights-deployment'
   params: {
@@ -131,10 +136,7 @@ module appInsights 'modules/app-insights.bicep' = {
 }
 
 // --- Azure SQL Database ---
-// Primary relational database for structured data:
-// - User data, sessions
-// - News article metadata
-// - Agent task history
+// Primary relational database for structured data
 module sqlDatabase 'modules/sql-database.bicep' = {
   name: 'sqlDatabase-deployment'
   params: {
@@ -143,31 +145,13 @@ module sqlDatabase 'modules/sql-database.bicep' = {
     tags: allTags
     administratorLogin: sqlAdminLogin
     administratorPassword: sqlAdminPassword
-    // Store connection string in Key Vault
     keyVaultName: keyVault.outputs.name
-  }
-}
-
-// --- Redis Cache ---
-// Used for:
-// - Session caching
-// - Rate limiting
-// - Inter-agent message queuing (pub/sub)
-// - Temporary data caching
-module redis 'modules/redis.bicep' = {
-  name: 'redis-deployment'
-  params: {
-    name: '${resourcePrefix}-redis'
-    location: location
-    tags: allTags
-    // Store connection string in Key Vault
-    keyVaultName: keyVault.outputs.name
+    allowedIPs: allowedIPs
   }
 }
 
 // --- Container Apps Environment ---
-// Managed Kubernetes environment for our AI agents
-// Includes KEDA for event-driven autoscaling
+// Managed container environment with VNet integration
 module containerAppsEnv 'modules/container-apps-env.bicep' = {
   name: 'containerAppsEnv-deployment'
   params: {
@@ -175,13 +159,12 @@ module containerAppsEnv 'modules/container-apps-env.bicep' = {
     location: location
     tags: allTags
     logAnalyticsWorkspaceId: logAnalytics.outputs.workspaceId
+    subnetId: vnet.outputs.containerAppsSubnetId
   }
 }
 
 // --- Container App (FastAPI API) ---
 // Hosts our FastAPI backend as a Container App
-// Uses consumption plan - no VM quota required
-// Note: ACR is NOT configured here - the workflow handles this after granting pull permission
 module apiContainerApp 'modules/container-app-api.bicep' = {
   name: 'apiContainerApp-deployment'
   params: {
@@ -191,20 +174,11 @@ module apiContainerApp 'modules/container-app-api.bicep' = {
     containerAppsEnvId: containerAppsEnv.outputs.id
     appInsightsConnectionString: appInsights.outputs.connectionString
     keyVaultName: keyVault.outputs.name
-    // ACR configuration is handled by the workflow after role assignment
-    // acrLoginServer and acrName are intentionally omitted here
-    // Pass secrets for the application
     databaseUrl: 'mssql+aioodbc://${sqlAdminLogin}:${sqlAdminPassword}@${sqlDatabase.outputs.fqdn}:1433/newsminds?driver=ODBC+Driver+18+for+SQL+Server&encrypt=yes&TrustServerCertificate=no'
     secretKey: secretKey
-    // IP allowlist for access control
     allowedIPs: allowedIPs
   }
 }
-
-
-// --- RBAC: Allow Container App to pull from ACR ---
-// The Container App needs AcrPull role to pull images using managed identity
-// Note: We move this to the container-app-api module to avoid circular dependency issues
 
 // --- Monitoring Alerts ---
 // Set up alerts for error rates, response times, and container health
@@ -216,18 +190,18 @@ module alerts 'modules/alerts.bicep' = {
     tags: allTags
     appInsightsId: appInsights.outputs.id
     containerAppId: apiContainerApp.outputs.id
-    // Add email addresses for notifications if needed
-    // alertEmailAddresses: ['your-email@example.com']
   }
 }
 
 // ----------------------------------------------------------------------------
 // OUTPUTS
 // ----------------------------------------------------------------------------
-// Outputs expose values from the deployment for:
-// - CI/CD pipelines to use
-// - Other Bicep templates to reference
-// - Developers to know endpoints
+
+@description('VNet name')
+output vnetName string = vnet.outputs.name
+
+@description('NSG ID')
+output nsgId string = vnet.outputs.nsgId
 
 @description('Key Vault name for secret management')
 output keyVaultName string = keyVault.outputs.name
@@ -241,9 +215,6 @@ output appInsightsConnectionString string = appInsights.outputs.connectionString
 @description('SQL Server FQDN')
 output sqlServerFqdn string = sqlDatabase.outputs.fqdn
 
-@description('Redis hostname')
-output redisHostname string = redis.outputs.hostname
-
 @description('Container Apps Environment ID')
 output containerAppsEnvId string = containerAppsEnv.outputs.id
 
@@ -255,4 +226,3 @@ output acrLoginServer string = containerRegistry.outputs.loginServer
 
 @description('Container Registry name')
 output acrName string = containerRegistry.outputs.name
-

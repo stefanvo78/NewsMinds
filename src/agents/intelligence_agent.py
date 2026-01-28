@@ -103,7 +103,15 @@ def search_internal(state: IntelligenceState) -> dict:
         return {"internal_docs": []}
 
     query = state["query"]
-    docs = rag_retriever.retrieve(query, limit=10)
+    
+    # Try to search, but gracefully handle if Qdrant is unavailable
+    try:
+        docs = rag_retriever.retrieve(query, limit=10)
+    except Exception as e:
+        # Qdrant not available - continue without internal docs
+        import logging
+        logging.warning(f"RAG retrieval failed (Qdrant may not be configured): {e}")
+        docs = []
 
     return {
         "internal_docs": docs,

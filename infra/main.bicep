@@ -193,6 +193,7 @@ module qdrantContainerApp 'modules/container-app-qdrant.bicep' = {
     storageAccountName: storageAccount.outputs.name
     storageAccountKey: storageAccount.outputs.accountKey
     fileShareName: storageAccount.outputs.fileShareName
+    allowedIPs: allowedIPs  // Allow dashboard access from same IPs as API
   }
 }
 
@@ -264,3 +265,6 @@ output acrName string = containerRegistry.outputs.name
 
 @description('Qdrant Container App FQDN (internal)')
 output qdrantUrl string = qdrantContainerApp.outputs.url
+
+@description('Qdrant Dashboard URL (if external access enabled)')
+output qdrantDashboardUrl string = 'https://${qdrantContainerApp.outputs.fqdn}/dashboard'

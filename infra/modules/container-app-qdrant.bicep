@@ -34,6 +34,9 @@ param storageAccountKey string
 @description('File share name')
 param fileShareName string
 
+@description('Allowed IP addresses for external access (CIDR notation). Empty = internal only.')
+param allowedIPs array = []
+
 // ----------------------------------------------------------------------------
 // RESOURCES
 // ----------------------------------------------------------------------------
@@ -70,12 +73,20 @@ resource qdrantApp 'Microsoft.App/containerApps@2024-03-01' = {
     managedEnvironmentId: containerAppsEnvId
 
     configuration: {
-      // Internal ingress - only accessible within the Container Apps Environment
+      // External ingress with IP restrictions for dashboard access
+      // If no IPs specified, only internal access is allowed
       ingress: {
-        external: false  // Internal only!
+        external: length(allowedIPs) > 0  // External if IPs specified, otherwise internal
         targetPort: 6333
         transport: 'http'
-        allowInsecure: true  // Internal traffic, no TLS needed
+        allowInsecure: false
+
+        // IP restrictions - only allow specified IPs for external access
+        ipSecurityRestrictions: [for (ip, i) in allowedIPs: {
+          name: 'allow-${i}'
+          ipAddressRange: endsWith(ip, '/32') ? ip : '${ip}/32'
+          action: 'Allow'
+        }]
       }
     }
 

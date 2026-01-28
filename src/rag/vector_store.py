@@ -119,10 +119,10 @@ class VectorStore:
                 ]
             )
 
-        # Search
-        results = self.client.search(
+        # Search using query_points (Qdrant client 1.7+)
+        results = self.client.query_points(
             collection_name=self.collection_name,
-            query_vector=query_embedding,
+            query=query_embedding,
             limit=limit,
             query_filter=search_filter,
         )
@@ -130,15 +130,15 @@ class VectorStore:
         # Format results
         return [
             {
-                "id": result.id,
-                "score": result.score,
-                "text": result.payload.get("text", ""),
+                "id": point.id,
+                "score": point.score,
+                "text": point.payload.get("text", ""),
                 "metadata": {
-                    k: v for k, v in result.payload.items()
+                    k: v for k, v in point.payload.items()
                     if k != "text"
                 },
             }
-            for result in results
+            for point in results.points
         ]
 
 

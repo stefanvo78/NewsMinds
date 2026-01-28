@@ -333,7 +333,7 @@ jobs:
             --output tsv)
 
           # Install Python dependencies for migrations
-          pip install alembic sqlalchemy aioodbc pyodbc pydantic pydantic-settings
+          pip install alembic sqlalchemy aioodbc pyodbc pydantic pydantic-settings passlib[bcrypt]
 
           # Build the connection string for Alembic
           export DATABASE_URL="mssql+aioodbc://${SQL_LOGIN}:${SQL_PASSWORD}@${sql_fqdn}:1433/newsminds?driver=ODBC+Driver+18+for+SQL+Server&encrypt=yes&TrustServerCertificate=no"

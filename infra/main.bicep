@@ -42,6 +42,10 @@ param sqlAdminPassword string
 @secure()
 param secretKey string
 
+@description('OpenAI API key for AI features')
+@secure()
+param openaiApiKey string = ''
+
 @description('Tags to apply to all resources')
 param tags object = {}
 
@@ -176,6 +180,7 @@ module apiContainerApp 'modules/container-app-api.bicep' = {
     keyVaultName: keyVault.outputs.name
     databaseUrl: 'mssql+aioodbc://${sqlAdminLogin}:${sqlAdminPassword}@${sqlDatabase.outputs.fqdn}:1433/newsminds?driver=ODBC+Driver+18+for+SQL+Server&encrypt=yes&TrustServerCertificate=no'
     secretKey: secretKey
+    openaiApiKey: openaiApiKey
     allowedIPs: allowedIPs
   }
 }

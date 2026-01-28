@@ -110,6 +110,7 @@ jobs:
           SQL_LOGIN: ${{ secrets.SQL_ADMIN_LOGIN }}
           SQL_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           echo "🔍 Previewing changes for ${{ env.ENVIRONMENT }} environment..."
           echo ""
@@ -120,7 +121,8 @@ jobs:
             --parameters infra/environments/${{ env.ENVIRONMENT }}.bicepparam \
             --parameters sqlAdminLogin="$SQL_LOGIN" \
             --parameters sqlAdminPassword="$SQL_PASSWORD" \
-            --parameters secretKey="$SECRET_KEY"
+            --parameters secretKey="$SECRET_KEY" \
+            --parameters openaiApiKey="$OPENAI_API_KEY"
 
 
   # --------------------------------------------------------------------------
@@ -166,6 +168,7 @@ jobs:
           SQL_LOGIN: ${{ secrets.SQL_ADMIN_LOGIN }}
           SQL_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           echo "🚀 Deploying to ${{ env.ENVIRONMENT }}..."
           echo ""
@@ -178,6 +181,7 @@ jobs:
             --parameters sqlAdminLogin="$SQL_LOGIN" \
             --parameters sqlAdminPassword="$SQL_PASSWORD" \
             --parameters secretKey="$SECRET_KEY" \
+            --parameters openaiApiKey="$OPENAI_API_KEY" \
             --name "newsmind-${{ env.ENVIRONMENT }}-$(date +%Y%m%d-%H%M%S)" \
             --query properties.outputs \
             --output json)

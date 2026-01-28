@@ -50,7 +50,9 @@ param databaseUrl string = ''
 @secure()
 param secretKey string = ''
 
-
+@description('OpenAI API key for AI features')
+@secure()
+param openaiApiKey string = ''
 
 @description('Minimum number of replicas')
 @minValue(0)
@@ -123,6 +125,10 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           name: 'secret-key'
           value: secretKey
         }
+        {
+          name: 'openai-api-key'
+          value: openaiApiKey
+        }
       ]
 
 
@@ -181,6 +187,10 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               name: 'DEBUG'
               value: 'false'
+            }
+            {
+              name: 'OPENAI_API_KEY'
+              secretRef: 'openai-api-key'
             }
           ]
 

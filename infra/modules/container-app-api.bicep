@@ -54,6 +54,9 @@ param secretKey string = ''
 @secure()
 param openaiApiKey string = ''
 
+@description('Qdrant vector database URL')
+param qdrantUrl string = ''
+
 @description('Minimum number of replicas')
 @minValue(0)
 @maxValue(30)
@@ -191,6 +194,10 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               name: 'OPENAI_API_KEY'
               secretRef: 'openai-api-key'
+            }
+            {
+              name: 'QDRANT_URL'
+              value: qdrantUrl
             }
           ]
 

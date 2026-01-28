@@ -116,6 +116,19 @@ module containerRegistry 'modules/container-registry.bicep' = {
   }
 }
 
+// --- Storage Account for Qdrant ---
+// Azure Files storage for Qdrant vector database persistence
+module storageAccount 'modules/storage-account.bicep' = {
+  name: 'storageAccount-deployment'
+  params: {
+    name: '${resourcePrefixNoHyphens}st'
+    location: location
+    tags: allTags
+    fileShareName: 'qdrant-data'
+    fileShareQuotaGB: 5
+  }
+}
+
 // --- Log Analytics Workspace ---
 // Central logging destination for all resources
 module logAnalytics 'modules/log-analytics.bicep' = {
@@ -167,6 +180,22 @@ module containerAppsEnv 'modules/container-apps-env.bicep' = {
   }
 }
 
+// --- Qdrant Vector Database ---
+// Runs Qdrant as a separate Container App with persistent storage
+module qdrantContainerApp 'modules/container-app-qdrant.bicep' = {
+  name: 'qdrantContainerApp-deployment'
+  params: {
+    name: '${resourcePrefix}-qdrant'
+    location: location
+    tags: allTags
+    containerAppsEnvId: containerAppsEnv.outputs.id
+    containerAppsEnvName: containerAppsEnv.outputs.name
+    storageAccountName: storageAccount.outputs.name
+    storageAccountKey: storageAccount.outputs.accountKey
+    fileShareName: storageAccount.outputs.fileShareName
+  }
+}
+
 // --- Container App (FastAPI API) ---
 // Hosts our FastAPI backend as a Container App
 module apiContainerApp 'modules/container-app-api.bicep' = {
@@ -181,6 +210,7 @@ module apiContainerApp 'modules/container-app-api.bicep' = {
     databaseUrl: 'mssql+aioodbc://${sqlAdminLogin}:${sqlAdminPassword}@${sqlDatabase.outputs.fqdn}:1433/newsminds?driver=ODBC+Driver+18+for+SQL+Server&encrypt=yes&TrustServerCertificate=no'
     secretKey: secretKey
     openaiApiKey: openaiApiKey
+    qdrantUrl: qdrantContainerApp.outputs.url
     allowedIPs: allowedIPs
   }
 }
@@ -231,3 +261,6 @@ output acrLoginServer string = containerRegistry.outputs.loginServer
 
 @description('Container Registry name')
 output acrName string = containerRegistry.outputs.name
+
+@description('Qdrant Container App FQDN (internal)')
+output qdrantUrl string = qdrantContainerApp.outputs.url

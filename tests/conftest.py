@@ -6,12 +6,17 @@ for all tests in the project.
 """
 
 import asyncio
+import os
 from collections.abc import AsyncGenerator, Generator
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+# Set test environment variables BEFORE importing app modules
+os.environ["ALLOW_PUBLIC_REGISTRATION"] = "true"
+os.environ["SECRET_KEY"] = "test-secret-key-for-testing"
 
 from src.api.core.database import get_db
 from src.api.core.rate_limit import limiter

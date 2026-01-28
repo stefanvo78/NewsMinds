@@ -19,13 +19,21 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 
-# Initialize OpenAI client
-openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
+# Lazy-load OpenAI client to allow app startup without API key
+_openai_client = None
+
+def _get_openai_client() -> OpenAI:
+    global _openai_client
+    if _openai_client is None:
+        if not settings.OPENAI_API_KEY:
+            raise ValueError("OPENAI_API_KEY is not configured")
+        _openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    return _openai_client
 
 
 def chat(messages: list[dict], max_tokens: int = 1000) -> str:
     """Helper to call ChatGPT."""
-    response = openai_client.chat.completions.create(
+    response = _get_openai_client().chat.completions.create(
         model=settings.OPENAI_MODEL,
         max_tokens=max_tokens,
         messages=messages,

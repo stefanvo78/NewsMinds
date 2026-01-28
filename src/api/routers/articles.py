@@ -18,7 +18,10 @@ from src.api.schemas import (
 )
 
 from src.api.services.ai import ai_service
+from src.rag.retriever import rag_retriever
+import logging
 
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/articles", tags=["Articles"])
 
@@ -50,6 +53,30 @@ async def create_article(
     db.add(article)
     await db.commit()
     await db.refresh(article)
+    
+    # Auto-ingest to Qdrant for RAG retrieval
+    if article.content:
+        try:
+            metadata = {
+                "article_id": str(article.id),
+                "source_id": str(article.source_id),
+                "title": article.title,
+                "url": article.url,
+                "author": article.author or "Unknown",
+            }
+            if article.published_at:
+                metadata["published_at"] = article.published_at.isoformat()
+            
+            num_chunks = rag_retriever.ingest_document(
+                text=article.content,
+                metadata=metadata,
+                chunk_size=500,
+            )
+            logger.info(f"Ingested article {article.id} into Qdrant ({num_chunks} chunks)")
+        except Exception as e:
+            # Don't fail article creation if Qdrant ingestion fails
+            logger.warning(f"Failed to ingest article {article.id} to Qdrant: {e}")
+    
     return article
 
 
@@ -184,3 +211,105 @@ async def summarize_article(
     )
     
     return {"article_id": str(article_id), "summary": summary}
+
+
+@router.post("/{article_id}/ingest")
+async def ingest_article_to_qdrant(
+    article_id: uuid.UUID,
+    db: DbSession,
+    current_user: CurrentUser,
+) -> dict:
+    """
+    Manually ingest an article into the Qdrant vector store.
+    
+    This is useful for re-indexing or ingesting articles that 
+    were created before auto-ingestion was enabled.
+    """
+    # Get the article from database
+    result = await db.execute(
+        select(Article).where(Article.id == article_id)
+    )
+    article = result.scalar_one_or_none()
+    
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+    
+    if not article.content:
+        raise HTTPException(status_code=400, detail="Article has no content to ingest")
+    
+    # Ingest to Qdrant
+    try:
+        metadata = {
+            "article_id": str(article.id),
+            "source_id": str(article.source_id),
+            "title": article.title,
+            "url": article.url,
+            "author": article.author or "Unknown",
+        }
+        if article.published_at:
+            metadata["published_at"] = article.published_at.isoformat()
+        
+        num_chunks = rag_retriever.ingest_document(
+            text=article.content,
+            metadata=metadata,
+            chunk_size=500,
+        )
+        
+        return {
+            "article_id": str(article_id),
+            "status": "ingested",
+            "chunks_created": num_chunks,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
+
+
+@router.post("/ingest-all")
+async def ingest_all_articles_to_qdrant(
+    db: DbSession,
+    current_user: CurrentUser,
+) -> dict:
+    """
+    Ingest all articles from the database into Qdrant.
+    
+    This is a bulk operation for initial setup or re-indexing.
+    """
+    # Get all articles with content
+    result = await db.execute(
+        select(Article).where(Article.content.isnot(None))
+    )
+    articles = result.scalars().all()
+    
+    total_chunks = 0
+    ingested = 0
+    failed = 0
+    
+    for article in articles:
+        try:
+            metadata = {
+                "article_id": str(article.id),
+                "source_id": str(article.source_id),
+                "title": article.title,
+                "url": article.url,
+                "author": article.author or "Unknown",
+            }
+            if article.published_at:
+                metadata["published_at"] = article.published_at.isoformat()
+            
+            num_chunks = rag_retriever.ingest_document(
+                text=article.content,
+                metadata=metadata,
+                chunk_size=500,
+            )
+            total_chunks += num_chunks
+            ingested += 1
+        except Exception as e:
+            logger.warning(f"Failed to ingest article {article.id}: {e}")
+            failed += 1
+    
+    return {
+        "status": "complete",
+        "articles_ingested": ingested,
+        "articles_failed": failed,
+        "total_chunks_created": total_chunks,
+    }

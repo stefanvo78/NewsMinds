@@ -5,6 +5,10 @@ This server exposes news search capabilities as MCP tools that
 Claude (or any MCP-compatible LLM) can use.
 """
 
+import asyncio
+from src.collection.adapters.rss_adapter import fetch_rss_articles
+from src.collection.adapters.newsapi_adapter import fetch_newsapi_articles
+
 import json
 
 from mcp.server import Server
@@ -77,46 +81,40 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 
 
 async def handle_search_news(arguments: dict) -> list[TextContent]:
-    """Execute a news search."""
+    """Execute a real news search."""
     query = arguments.get("query", "")
     max_results = arguments.get("max_results", 5)
 
-    # In production, you'd call a real news API here
-    # For now, we'll simulate with a placeholder
-    # Replace this with your actual news API integration
+    all_articles = []
 
-    # Example using NewsAPI.org (you'd need an API key):
-    # async with httpx.AsyncClient() as client:
-    #     response = await client.get(
-    #         "https://newsapi.org/v2/everything",
-    #         params={"q": query, "pageSize": max_results},
-    #         headers={"X-Api-Key": NEWS_API_KEY},
-    #     )
-    #     data = response.json()
+    # Try NewsAPI first (best for keyword search)
+    try:
+        newsapi_articles = await fetch_newsapi_articles(
+            query=query,
+            max_articles=max_results,
+        )
+        all_articles.extend(newsapi_articles)
+    except Exception:
+        pass  # NewsAPI not configured or failed
 
-    # Simulated response for demo
+    # Format results
     results = {
         "query": query,
         "articles": [
             {
-                "title": f"News about {query} - Article 1",
-                "summary": f"This is a summary about {query}...",
-                "source": "Example News",
-                "url": "https://example.com/article1",
-            },
-            {
-                "title": f"Breaking: {query} developments",
-                "summary": f"Latest updates on {query}...",
-                "source": "Tech Daily",
-                "url": "https://example.com/article2",
-            },
-        ][:max_results],
+                "title": a["title"],
+                "summary": (a.get("content") or "")[:300],
+                "source": "NewsAPI",
+                "url": a["url"],
+            }
+            for a in all_articles[:max_results]
+        ],
     }
 
     return [
         TextContent(
             type="text",
-            text=json.dumps(results, indent=2),
+            text=json.dumps(results, indent=2, default=str),
         )
     ]
 

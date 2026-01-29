@@ -22,6 +22,7 @@ from src.api.core.database import engine
 from src.api.core.logging import logger
 from src.api.core.rate_limit import limiter
 from src.api.routers import auth, users, sources, articles, intelligence
+from src.api.routers.collection import router as collection_router
 
 
 # Azure Monitor integration (only when connection string is provided)
@@ -113,6 +114,7 @@ app.include_router(users.router, prefix=settings.API_V1_PREFIX)
 app.include_router(sources.router, prefix=settings.API_V1_PREFIX)
 app.include_router(articles.router, prefix=settings.API_V1_PREFIX)
 app.include_router(intelligence.router, prefix=settings.API_V1_PREFIX)
+app.include_router(collection_router, prefix="/api/v1")
 
 
 # Health check endpoint (no auth required)

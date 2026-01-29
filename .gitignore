@@ -175,6 +175,9 @@ coverage/
 tmp/
 temp/
 *.db
+*.db-journal
+*.db-wal
+*.db-shm
 *.sqlite
 *.sqlite3
 data/*.db
@@ -206,3 +209,4 @@ data/processed/
 
 .CLAUDE.md
 docs/CLASSROOM_AI_AGENTS.md
+docs/guide-news-collection.md

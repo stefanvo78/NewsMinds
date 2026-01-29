@@ -5,7 +5,7 @@ News Source model for tracking news providers.
 import uuid
 from typing import Optional, TYPE_CHECKING
 
-from sqlalchemy import String, Boolean, Text
+from sqlalchemy import String, Boolean, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.api.models.base import Base, TimestampMixin
@@ -60,4 +60,21 @@ class Source(Base, TimestampMixin):
         "Article",
         back_populates="source",
         lazy="selectin",
+    )
+
+    # Type of source: "rss", "newsapi", or "static"
+    source_type: Mapped[str] = mapped_column(
+        String(50),
+        default="static",
+        nullable=False,
+    )
+
+    # Configuration specific to source type (JSON)
+    # RSS:     {"feed_url": "https://feeds.bbci.co.uk/news/rss.xml"}
+    # NewsAPI: {"query": "artificial intelligence", "language": "en"}
+    # Static:  {} (no auto-collection)
+    source_config: Mapped[dict] = mapped_column(
+        JSON,
+        default=dict,
+        nullable=False,
     )

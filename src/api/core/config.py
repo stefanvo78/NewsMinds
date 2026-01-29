@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     # Embedding Model
     EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
 
+    # NewsAPI.org
+    NEWSAPI_KEY: str | None = None
+
     # Tell Pydantic to read from .env file
     model_config = SettingsConfigDict(
         env_file=".env",

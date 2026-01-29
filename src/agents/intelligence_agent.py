@@ -126,15 +126,41 @@ def search_internal(state: IntelligenceState) -> dict:
 
 
 async def search_external(state: IntelligenceState) -> dict:
-    """Node: Search external sources via MCP."""
+    """Node: Search external sources for real-time news."""
     if state["search_strategy"] == "INTERNAL":
         return {"external_articles": []}
 
-    # In production, call MCP server here
-    # For now, return empty (would integrate with news API)
+    query = state["query"]
+
+    # Use NewsAPI adapter directly for real-time search
+    from src.collection.adapters.newsapi_adapter import fetch_newsapi_articles
+
+    try:
+        articles = await fetch_newsapi_articles(
+            query=query,
+            max_articles=5,
+        )
+    except Exception as e:
+        import logging
+        logging.warning(f"External search failed: {e}")
+        articles = []
+
     return {
-        "external_articles": [],
-        "messages": [{"role": "assistant", "content": "Searched external sources"}],
+        "external_articles": [
+            {
+                "title": a["title"],
+                "summary": (a.get("content") or "")[:500],
+                "url": a["url"],
+                "author": a.get("author"),
+            }
+            for a in articles
+        ],
+        "messages": [
+            {
+                "role": "assistant",
+                "content": f"Found {len(articles)} external articles",
+            }
+        ],
     }
 
 

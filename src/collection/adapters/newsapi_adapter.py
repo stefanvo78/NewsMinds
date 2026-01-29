@@ -70,13 +70,15 @@ async def fetch_newsapi_articles(
             except ValueError:
                 pass
 
-        articles.append({
-            "title": item.get("title", "Untitled"),
-            "url": item.get("url", ""),
-            "content": content,
-            "author": item.get("author"),
-            "published_at": published_at,
-        })
+        articles.append(
+            {
+                "title": item.get("title", "Untitled"),
+                "url": item.get("url", ""),
+                "content": content,
+                "author": item.get("author"),
+                "published_at": published_at,
+            }
+        )
 
     logger.info(f"Fetched {len(articles)} articles from NewsAPI for query '{query}'")
     return articles

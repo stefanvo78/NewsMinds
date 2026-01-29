@@ -142,6 +142,7 @@ async def search_external(state: IntelligenceState) -> dict:
         )
     except Exception as e:
         import logging
+
         logging.warning(f"External search failed: {e}")
         articles = []
 

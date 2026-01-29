@@ -56,7 +56,9 @@ async def collect_from_source(
 
         else:
             # "static" or unknown - skip
-            logger.debug(f"Source '{source.name}' is type '{source.source_type}', skipping")
+            logger.debug(
+                f"Source '{source.name}' is type '{source.source_type}', skipping"
+            )
             return stats
 
     except Exception as e:

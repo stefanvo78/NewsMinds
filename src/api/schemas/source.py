@@ -19,6 +19,7 @@ class SourceCreate(BaseModel):
     source_type: str = Field(default="static", pattern="^(rss|newsapi|static)$")
     source_config: dict = Field(default_factory=dict)
 
+
 class SourceUpdate(BaseModel):
     """Schema for updating a source (all fields optional)."""
 
@@ -28,7 +29,6 @@ class SourceUpdate(BaseModel):
     is_active: Optional[bool] = None
     source_type: Optional[str] = Field(default=None, pattern="^(rss|newsapi|static)$")
     source_config: Optional[dict] = None
-
 
 
 class SourceResponse(BaseModel):

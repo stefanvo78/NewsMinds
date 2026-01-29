@@ -52,13 +52,15 @@ async def fetch_rss_articles(
         if hasattr(entry, "published_parsed") and entry.published_parsed:
             published_at = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
 
-        articles.append({
-            "title": entry.get("title", "Untitled"),
-            "url": entry.get("link", ""),
-            "content": _strip_html(content),
-            "author": entry.get("author", None),
-            "published_at": published_at,
-        })
+        articles.append(
+            {
+                "title": entry.get("title", "Untitled"),
+                "url": entry.get("link", ""),
+                "content": _strip_html(content),
+                "author": entry.get("author", None),
+                "published_at": published_at,
+            }
+        )
 
     logger.info(f"Fetched {len(articles)} articles from {feed_url}")
     return articles
@@ -67,6 +69,7 @@ async def fetch_rss_articles(
 def _strip_html(text: str) -> str:
     """Remove HTML tags from text. Simple approach."""
     import re
+
     clean = re.sub(r"<[^>]+>", " ", text)
     clean = re.sub(r"\s+", " ", clean).strip()
     return clean

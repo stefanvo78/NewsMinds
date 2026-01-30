@@ -60,6 +60,22 @@ services:
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
+  # Next.js Frontend
+  # ---------------------------------------------------------------------------
+  # Dashboard UI for managing sources, articles, and intelligence briefings.
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
   # Qdrant Vector Database
   # ---------------------------------------------------------------------------
   # Stores document embeddings for RAG (Retrieval-Augmented Generation).

@@ -255,9 +255,14 @@ jobs:
             acr_login_server="${acr_name}.azurecr.io"
           fi
           
+          # Get API hostname for frontend build
+          api_hostname=$(echo "$outputs" | jq -r '.apiHostname.value // empty')
+
           echo "acr_name=$acr_name" >> $GITHUB_OUTPUT
           echo "acr_login_server=$acr_login_server" >> $GITHUB_OUTPUT
-          echo "image_tag=$acr_login_server/newsminds-api:${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "api_image_tag=$acr_login_server/newsminds-api:${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "frontend_image_tag=$acr_login_server/newsminds-frontend:${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "api_hostname=$api_hostname" >> $GITHUB_OUTPUT
 
       # Login to Azure Container Registry
       - name: Login to ACR
@@ -273,40 +278,79 @@ jobs:
           echo "username=$acr_username" >> $GITHUB_OUTPUT
           echo "password=$acr_password" >> $GITHUB_OUTPUT
 
-      # Build and push Docker image
-      - name: Build and Push Docker Image
+      # Build and push Docker images (API + Frontend)
+      - name: Build and Push API Image
         run: |
-          echo "🐳 Building Docker image..."
-          docker build -t ${{ steps.infra.outputs.image_tag }} .
-          
+          echo "🐳 Building API Docker image..."
+          docker build -t ${{ steps.infra.outputs.api_image_tag }} .
+
           echo "📤 Pushing to ACR..."
-          docker push ${{ steps.infra.outputs.image_tag }}
-          
-          echo "✅ Image pushed: ${{ steps.infra.outputs.image_tag }}"
+          docker push ${{ steps.infra.outputs.api_image_tag }}
 
-      # Configure Container App to use ACR and deploy new image
-      - name: Deploy to Container App
+          echo "✅ Image pushed: ${{ steps.infra.outputs.api_image_tag }}"
+
+      - name: Build and Push Frontend Image
         run: |
-          echo "🔧 Configuring ACR registry for Container App..."
+          # Determine the API URL for the frontend build
+          api_hostname="${{ steps.infra.outputs.api_hostname }}"
+          if [ -n "$api_hostname" ]; then
+            api_url="https://${api_hostname}"
+          else
+            api_url="https://newsminds-${{ env.ENVIRONMENT }}-api.$(az containerapp env show --name newsminds-${{ env.ENVIRONMENT }}-cae --resource-group newsmind-${{ env.ENVIRONMENT }}-rg --query properties.defaultDomain -o tsv 2>/dev/null || echo 'placeholder.azurecontainerapps.io')"
+          fi
 
-          # Configure the registry with admin credentials
+          echo "🐳 Building Frontend Docker image with API_URL=${api_url}..."
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL="${api_url}" \
+            -t ${{ steps.infra.outputs.frontend_image_tag }} \
+            ./frontend
+
+          echo "📤 Pushing to ACR..."
+          docker push ${{ steps.infra.outputs.frontend_image_tag }}
+
+          echo "✅ Image pushed: ${{ steps.infra.outputs.frontend_image_tag }}"
+
+      # Configure and deploy API Container App
+      - name: Deploy API to Container App
+        run: |
+          echo "🔧 Configuring ACR registry for API Container App..."
+
           az containerapp registry set \
-            --name "newsmind-${{ env.ENVIRONMENT }}-api" \
+            --name "newsminds-${{ env.ENVIRONMENT }}-api" \
             --resource-group "newsmind-${{ env.ENVIRONMENT }}-rg" \
             --server ${{ steps.infra.outputs.acr_login_server }} \
             --username "${{ steps.acr_creds.outputs.username }}" \
             --password "${{ steps.acr_creds.outputs.password }}"
 
-          echo "✅ ACR registry configured"
-          echo ""
-          echo "🚀 Deploying new image..."
+          echo "🚀 Deploying API image..."
 
           az containerapp update \
-            --name "newsmind-${{ env.ENVIRONMENT }}-api" \
+            --name "newsminds-${{ env.ENVIRONMENT }}-api" \
             --resource-group "newsmind-${{ env.ENVIRONMENT }}-rg" \
-            --image ${{ steps.infra.outputs.image_tag }}
+            --image ${{ steps.infra.outputs.api_image_tag }}
 
-          echo "✅ Deployment complete!"
+          echo "✅ API deployment complete!"
+
+      # Configure and deploy Frontend Container App
+      - name: Deploy Frontend to Container App
+        run: |
+          echo "🔧 Configuring ACR registry for Frontend Container App..."
+
+          az containerapp registry set \
+            --name "newsminds-${{ env.ENVIRONMENT }}-frontend" \
+            --resource-group "newsmind-${{ env.ENVIRONMENT }}-rg" \
+            --server ${{ steps.infra.outputs.acr_login_server }} \
+            --username "${{ steps.acr_creds.outputs.username }}" \
+            --password "${{ steps.acr_creds.outputs.password }}"
+
+          echo "🚀 Deploying Frontend image..."
+
+          az containerapp update \
+            --name "newsminds-${{ env.ENVIRONMENT }}-frontend" \
+            --resource-group "newsmind-${{ env.ENVIRONMENT }}-rg" \
+            --image ${{ steps.infra.outputs.frontend_image_tag }}
+
+          echo "✅ Frontend deployment complete!"
 
       # Run database migrations
       - name: Install ODBC Driver
@@ -348,11 +392,33 @@ jobs:
 
           echo "✅ Migrations complete!"
 
+      - name: Seed Default Sources
+        env:
+          SQL_LOGIN: ${{ secrets.SQL_ADMIN_LOGIN }}
+          SQL_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
+        run: |
+          echo "🌱 Seeding default news sources..."
+
+          # Get the SQL server FQDN
+          sql_fqdn=$(az sql server show \
+            --name "newsmind-${{ env.ENVIRONMENT }}-sql" \
+            --resource-group "newsmind-${{ env.ENVIRONMENT }}-rg" \
+            --query fullyQualifiedDomainName \
+            --output tsv)
+
+          export DATABASE_URL="mssql+aioodbc://${SQL_LOGIN}:${SQL_PASSWORD}@${sql_fqdn}:1433/newsminds?driver=ODBC+Driver+18+for+SQL+Server&encrypt=yes&TrustServerCertificate=no"
+
+          python scripts/seed_sources.py
+
+          echo "✅ Seeding complete!"
+
       - name: Deployment Summary
         run: |
           echo "## 🐳 Application Deployment" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Image | \`${{ steps.infra.outputs.image_tag }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Container App | \`newsmind-${{ env.ENVIRONMENT }}-api\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| API Image | \`${{ steps.infra.outputs.api_image_tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| API Container App | \`newsminds-${{ env.ENVIRONMENT }}-api\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend Image | \`${{ steps.infra.outputs.frontend_image_tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend Container App | \`newsminds-${{ env.ENVIRONMENT }}-frontend\` |" >> $GITHUB_STEP_SUMMARY

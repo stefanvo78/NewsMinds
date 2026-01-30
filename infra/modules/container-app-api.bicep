@@ -67,6 +67,9 @@ param minReplicas int = 0  // Scale to zero for dev
 @maxValue(30)
 param maxReplicas int = 3
 
+@description('Comma-separated CORS allowed origins for the API')
+param corsOrigins string = ''
+
 @description('Allowed IP addresses for access (CIDR notation). Empty array means public access.')
 param allowedIPs array = []
 
@@ -198,6 +201,10 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               name: 'QDRANT_URL'
               value: qdrantUrl
+            }
+            {
+              name: 'CORS_ORIGINS'
+              value: corsOrigins
             }
           ]
 

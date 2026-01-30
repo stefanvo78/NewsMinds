@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     # Embedding Model
     EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
 
+    # CORS
+    CORS_ORIGINS: str = ""  # Comma-separated list of allowed origins (e.g., "https://frontend.example.com,https://other.example.com")
+
     # NewsAPI.org
     NEWSAPI_KEY: str | None = None
 

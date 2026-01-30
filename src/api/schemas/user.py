@@ -40,7 +40,7 @@ class UserResponse(BaseModel):
     """Schema for returning user data (excludes password)."""
 
     id: uuid.UUID
-    email: EmailStr
+    email: str
     full_name: Optional[str]
     is_active: bool
     created_at: datetime

@@ -197,6 +197,20 @@ module qdrantContainerApp 'modules/container-app-qdrant.bicep' = {
   }
 }
 
+// --- Container App (Next.js Frontend) ---
+// Hosts the Next.js dashboard as a Container App
+// Deployed before the API so its FQDN can be passed as a CORS origin
+module frontendContainerApp 'modules/container-app-frontend.bicep' = {
+  name: 'frontendContainerApp-deployment'
+  params: {
+    name: '${resourcePrefix}-frontend'
+    location: location
+    tags: allTags
+    containerAppsEnvId: containerAppsEnv.outputs.id
+    allowedIPs: allowedIPs
+  }
+}
+
 // --- Container App (FastAPI API) ---
 // Hosts our FastAPI backend as a Container App
 module apiContainerApp 'modules/container-app-api.bicep' = {
@@ -212,6 +226,7 @@ module apiContainerApp 'modules/container-app-api.bicep' = {
     secretKey: secretKey
     openaiApiKey: openaiApiKey
     qdrantUrl: qdrantContainerApp.outputs.url
+    corsOrigins: 'https://${frontendContainerApp.outputs.fqdn}'
     allowedIPs: allowedIPs
   }
 }
@@ -265,6 +280,9 @@ output acrName string = containerRegistry.outputs.name
 
 @description('Qdrant Container App FQDN (internal)')
 output qdrantUrl string = qdrantContainerApp.outputs.url
+
+@description('Frontend Container App FQDN')
+output frontendHostname string = frontendContainerApp.outputs.fqdn
 
 @description('Qdrant Dashboard URL (if external access enabled)')
 output qdrantDashboardUrl string = 'https://${qdrantContainerApp.outputs.fqdn}/dashboard'

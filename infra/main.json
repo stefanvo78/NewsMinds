@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "2220426957199089358"
+      "templateHash": "12549012552686766328"
     }
   },
   "parameters": {
@@ -50,6 +50,13 @@
       "type": "securestring",
       "metadata": {
         "description": "JWT secret key for authentication"
+      }
+    },
+    "openaiApiKey": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "OpenAI API key for AI features"
       }
     },
     "tags": {
@@ -613,6 +620,151 @@
                 "description": "Admin username (if admin user is enabled)"
               },
               "value": "[if(parameters('adminUserEnabled'), listCredentials(resourceId('Microsoft.ContainerRegistry/registries', parameters('name')), '2023-07-01').username, '')]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "storageAccount-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('{0}st', variables('resourcePrefixNoHyphens'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('allTags')]"
+          },
+          "fileShareName": {
+            "value": "qdrant-data"
+          },
+          "fileShareQuotaGB": {
+            "value": 5
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "18009171793088906480"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 24,
+              "metadata": {
+                "description": "Name of the storage account (must be globally unique, lowercase, no hyphens)"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags to apply"
+              }
+            },
+            "fileShareName": {
+              "type": "string",
+              "defaultValue": "qdrant-data",
+              "metadata": {
+                "description": "Name of the file share to create"
+              }
+            },
+            "fileShareQuotaGB": {
+              "type": "int",
+              "defaultValue": 5,
+              "metadata": {
+                "description": "File share quota in GB"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Storage/storageAccounts/fileServices/shares",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('name'), 'default', parameters('fileShareName'))]",
+              "properties": {
+                "shareQuota": "[parameters('fileShareQuotaGB')]",
+                "accessTier": "TransactionOptimized"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/fileServices', parameters('name'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/fileServices",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}', parameters('name'), 'default')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('name'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2023-01-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "kind": "StorageV2",
+              "sku": {
+                "name": "Standard_LRS"
+              },
+              "properties": {
+                "minimumTlsVersion": "TLS1_2",
+                "allowBlobPublicAccess": false,
+                "supportsHttpsTrafficOnly": true,
+                "accessTier": "Hot"
+              }
+            }
+          ],
+          "outputs": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage account name"
+              },
+              "value": "[parameters('name')]"
+            },
+            "id": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage account ID"
+              },
+              "value": "[resourceId('Microsoft.Storage/storageAccounts', parameters('name'))]"
+            },
+            "fileShareName": {
+              "type": "string",
+              "metadata": {
+                "description": "File share name"
+              },
+              "value": "[parameters('fileShareName')]"
+            },
+            "accountKey": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage account key (for mounting)"
+              },
+              "value": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('name')), '2023-01-01').keys[0].value]"
             }
           }
         }
@@ -1286,6 +1438,490 @@
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
+      "name": "qdrantContainerApp-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('{0}-qdrant', variables('resourcePrefix'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('allTags')]"
+          },
+          "containerAppsEnvId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'containerAppsEnv-deployment'), '2025-04-01').outputs.id.value]"
+          },
+          "containerAppsEnvName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'containerAppsEnv-deployment'), '2025-04-01').outputs.name.value]"
+          },
+          "storageAccountName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storageAccount-deployment'), '2025-04-01').outputs.name.value]"
+          },
+          "storageAccountKey": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storageAccount-deployment'), '2025-04-01').outputs.accountKey.value]"
+          },
+          "fileShareName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storageAccount-deployment'), '2025-04-01').outputs.fileShareName.value]"
+          },
+          "allowedIPs": {
+            "value": "[parameters('allowedIPs')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "9564056640692225507"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the Container App"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags to apply"
+              }
+            },
+            "containerAppsEnvId": {
+              "type": "string",
+              "metadata": {
+                "description": "Container Apps Environment ID"
+              }
+            },
+            "containerAppsEnvName": {
+              "type": "string",
+              "metadata": {
+                "description": "Container Apps Environment name"
+              }
+            },
+            "storageAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage account name for persistent data"
+              }
+            },
+            "storageAccountKey": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Storage account key"
+              }
+            },
+            "fileShareName": {
+              "type": "string",
+              "metadata": {
+                "description": "File share name"
+              }
+            },
+            "allowedIPs": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Allowed IP addresses for external access (CIDR notation). Empty = internal only."
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.App/managedEnvironments/storages",
+              "apiVersion": "2024-03-01",
+              "name": "[format('{0}/{1}', parameters('containerAppsEnvName'), 'qdrant-storage')]",
+              "properties": {
+                "azureFile": {
+                  "accountName": "[parameters('storageAccountName')]",
+                  "accountKey": "[parameters('storageAccountKey')]",
+                  "shareName": "[parameters('fileShareName')]",
+                  "accessMode": "ReadWrite"
+                }
+              }
+            },
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2024-03-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "managedEnvironmentId": "[parameters('containerAppsEnvId')]",
+                "configuration": {
+                  "ingress": {
+                    "copy": [
+                      {
+                        "name": "ipSecurityRestrictions",
+                        "count": "[length(parameters('allowedIPs'))]",
+                        "input": {
+                          "name": "[format('allow-{0}', copyIndex('ipSecurityRestrictions'))]",
+                          "ipAddressRange": "[if(endsWith(parameters('allowedIPs')[copyIndex('ipSecurityRestrictions')], '/32'), parameters('allowedIPs')[copyIndex('ipSecurityRestrictions')], format('{0}/32', parameters('allowedIPs')[copyIndex('ipSecurityRestrictions')]))]",
+                          "action": "Allow"
+                        }
+                      }
+                    ],
+                    "external": "[greater(length(parameters('allowedIPs')), 0)]",
+                    "targetPort": 6333,
+                    "transport": "http",
+                    "allowInsecure": false
+                  }
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "qdrant",
+                      "image": "qdrant/qdrant:v1.12.6",
+                      "resources": {
+                        "cpu": "[json('0.5')]",
+                        "memory": "1Gi"
+                      },
+                      "volumeMounts": [
+                        {
+                          "volumeName": "qdrant-data",
+                          "mountPath": "/qdrant/storage"
+                        }
+                      ],
+                      "env": [
+                        {
+                          "name": "QDRANT__SERVICE__HTTP_PORT",
+                          "value": "6333"
+                        },
+                        {
+                          "name": "QDRANT__SERVICE__GRPC_PORT",
+                          "value": "6334"
+                        }
+                      ],
+                      "probes": [
+                        {
+                          "type": "Liveness",
+                          "httpGet": {
+                            "path": "/healthz",
+                            "port": 6333
+                          },
+                          "initialDelaySeconds": 10,
+                          "periodSeconds": 30
+                        },
+                        {
+                          "type": "Readiness",
+                          "httpGet": {
+                            "path": "/readyz",
+                            "port": 6333
+                          },
+                          "initialDelaySeconds": 5,
+                          "periodSeconds": 10
+                        }
+                      ]
+                    }
+                  ],
+                  "volumes": [
+                    {
+                      "name": "qdrant-data",
+                      "storageName": "qdrant-storage",
+                      "storageType": "AzureFile"
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": 1,
+                    "maxReplicas": 1
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.App/managedEnvironments/storages', parameters('containerAppsEnvName'), 'qdrant-storage')]"
+              ]
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "metadata": {
+                "description": "Qdrant Container App ID"
+              },
+              "value": "[resourceId('Microsoft.App/containerApps', parameters('name'))]"
+            },
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Qdrant Container App name"
+              },
+              "value": "[parameters('name')]"
+            },
+            "fqdn": {
+              "type": "string",
+              "metadata": {
+                "description": "Qdrant internal FQDN"
+              },
+              "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01').configuration.ingress.fqdn]"
+            },
+            "url": {
+              "type": "string",
+              "metadata": {
+                "description": "Qdrant internal URL for API to use"
+              },
+              "value": "[format('http://{0}', reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01').configuration.ingress.fqdn)]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'containerAppsEnv-deployment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'storageAccount-deployment')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "frontendContainerApp-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('{0}-frontend', variables('resourcePrefix'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('allTags')]"
+          },
+          "containerAppsEnvId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'containerAppsEnv-deployment'), '2025-04-01').outputs.id.value]"
+          },
+          "allowedIPs": {
+            "value": "[parameters('allowedIPs')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "9654305093559080228"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the Container App"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags to apply"
+              }
+            },
+            "containerAppsEnvId": {
+              "type": "string",
+              "metadata": {
+                "description": "Container Apps Environment ID"
+              }
+            },
+            "acrLoginServer": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Container Registry login server (e.g., myregistry.azurecr.io)"
+              }
+            },
+            "containerImage": {
+              "type": "string",
+              "defaultValue": "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest",
+              "metadata": {
+                "description": "Container image to deploy (defaults to placeholder if not provided)"
+              }
+            },
+            "minReplicas": {
+              "type": "int",
+              "defaultValue": 0,
+              "minValue": 0,
+              "maxValue": 10,
+              "metadata": {
+                "description": "Minimum number of replicas"
+              }
+            },
+            "maxReplicas": {
+              "type": "int",
+              "defaultValue": 2,
+              "minValue": 1,
+              "maxValue": 10,
+              "metadata": {
+                "description": "Maximum number of replicas"
+              }
+            },
+            "allowedIPs": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Allowed IP addresses for access (CIDR notation). Empty array means public access."
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2024-03-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "managedEnvironmentId": "[parameters('containerAppsEnvId')]",
+                "configuration": {
+                  "ingress": {
+                    "copy": [
+                      {
+                        "name": "ipSecurityRestrictions",
+                        "count": "[length(parameters('allowedIPs'))]",
+                        "input": {
+                          "name": "[format('allow-{0}', copyIndex('ipSecurityRestrictions'))]",
+                          "ipAddressRange": "[if(endsWith(parameters('allowedIPs')[copyIndex('ipSecurityRestrictions')], '/32'), parameters('allowedIPs')[copyIndex('ipSecurityRestrictions')], format('{0}/32', parameters('allowedIPs')[copyIndex('ipSecurityRestrictions')]))]",
+                          "action": "Allow"
+                        }
+                      }
+                    ],
+                    "external": true,
+                    "targetPort": 3000,
+                    "transport": "http",
+                    "allowInsecure": false,
+                    "traffic": [
+                      {
+                        "latestRevision": true,
+                        "weight": 100
+                      }
+                    ]
+                  },
+                  "registries": "[if(not(equals(parameters('acrLoginServer'), '')), createArray(createObject('server', parameters('acrLoginServer'), 'identity', 'system')), createArray())]"
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "frontend",
+                      "image": "[parameters('containerImage')]",
+                      "resources": {
+                        "cpu": "[json('0.25')]",
+                        "memory": "0.5Gi"
+                      },
+                      "env": [
+                        {
+                          "name": "PORT",
+                          "value": "3000"
+                        },
+                        {
+                          "name": "HOSTNAME",
+                          "value": "0.0.0.0"
+                        }
+                      ],
+                      "probes": [
+                        {
+                          "type": "Liveness",
+                          "httpGet": {
+                            "path": "/",
+                            "port": 3000
+                          },
+                          "initialDelaySeconds": 10,
+                          "periodSeconds": 30
+                        },
+                        {
+                          "type": "Readiness",
+                          "httpGet": {
+                            "path": "/",
+                            "port": 3000
+                          },
+                          "initialDelaySeconds": 5,
+                          "periodSeconds": 10
+                        }
+                      ]
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": "[parameters('minReplicas')]",
+                    "maxReplicas": "[parameters('maxReplicas')]",
+                    "rules": [
+                      {
+                        "name": "http-scaling",
+                        "http": {
+                          "metadata": {
+                            "concurrentRequests": "100"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "metadata": {
+                "description": "Container App resource ID"
+              },
+              "value": "[resourceId('Microsoft.App/containerApps', parameters('name'))]"
+            },
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Container App name"
+              },
+              "value": "[parameters('name')]"
+            },
+            "fqdn": {
+              "type": "string",
+              "metadata": {
+                "description": "Container App FQDN"
+              },
+              "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01').configuration.ingress.fqdn]"
+            },
+            "principalId": {
+              "type": "string",
+              "metadata": {
+                "description": "Container App principal ID (for RBAC)"
+              },
+              "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01', 'full').identity.principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'containerAppsEnv-deployment')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
       "name": "apiContainerApp-deployment",
       "properties": {
         "expressionEvaluationOptions": {
@@ -1317,6 +1953,15 @@
           "secretKey": {
             "value": "[parameters('secretKey')]"
           },
+          "openaiApiKey": {
+            "value": "[parameters('openaiApiKey')]"
+          },
+          "qdrantUrl": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'qdrantContainerApp-deployment'), '2025-04-01').outputs.url.value]"
+          },
+          "corsOrigins": {
+            "value": "[format('https://{0}', reference(resourceId('Microsoft.Resources/deployments', 'frontendContainerApp-deployment'), '2025-04-01').outputs.fqdn.value)]"
+          },
           "allowedIPs": {
             "value": "[parameters('allowedIPs')]"
           }
@@ -1328,7 +1973,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "480503610849017224"
+              "templateHash": "12418625789689734684"
             }
           },
           "parameters": {
@@ -1404,6 +2049,20 @@
                 "description": "JWT secret key"
               }
             },
+            "openaiApiKey": {
+              "type": "securestring",
+              "defaultValue": "",
+              "metadata": {
+                "description": "OpenAI API key for AI features"
+              }
+            },
+            "qdrantUrl": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Qdrant vector database URL"
+              }
+            },
             "minReplicas": {
               "type": "int",
               "defaultValue": 0,
@@ -1420,6 +2079,13 @@
               "maxValue": 30,
               "metadata": {
                 "description": "Maximum number of replicas"
+              }
+            },
+            "corsOrigins": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Comma-separated CORS allowed origins for the API"
               }
             },
             "allowedIPs": {
@@ -1478,6 +2144,10 @@
                     {
                       "name": "secret-key",
                       "value": "[parameters('secretKey')]"
+                    },
+                    {
+                      "name": "openai-api-key",
+                      "value": "[parameters('openaiApiKey')]"
                     }
                   ],
                   "registries": "[if(not(equals(parameters('acrLoginServer'), '')), createArray(createObject('server', parameters('acrLoginServer'), 'identity', 'system')), createArray())]"
@@ -1519,6 +2189,18 @@
                         {
                           "name": "DEBUG",
                           "value": "false"
+                        },
+                        {
+                          "name": "OPENAI_API_KEY",
+                          "secretRef": "openai-api-key"
+                        },
+                        {
+                          "name": "QDRANT_URL",
+                          "value": "[parameters('qdrantUrl')]"
+                        },
+                        {
+                          "name": "CORS_ORIGINS",
+                          "value": "[parameters('corsOrigins')]"
                         }
                       ],
                       "probes": [
@@ -1596,7 +2278,9 @@
       "dependsOn": [
         "[resourceId('Microsoft.Resources/deployments', 'appInsights-deployment')]",
         "[resourceId('Microsoft.Resources/deployments', 'containerAppsEnv-deployment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'frontendContainerApp-deployment')]",
         "[resourceId('Microsoft.Resources/deployments', 'keyVault-deployment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'qdrantContainerApp-deployment')]",
         "[resourceId('Microsoft.Resources/deployments', 'sqlDatabase-deployment')]"
       ]
     },
@@ -1911,6 +2595,27 @@
         "description": "Container Registry name"
       },
       "value": "[reference(resourceId('Microsoft.Resources/deployments', 'containerRegistry-deployment'), '2025-04-01').outputs.name.value]"
+    },
+    "qdrantUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "Qdrant Container App FQDN (internal)"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'qdrantContainerApp-deployment'), '2025-04-01').outputs.url.value]"
+    },
+    "frontendHostname": {
+      "type": "string",
+      "metadata": {
+        "description": "Frontend Container App FQDN"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'frontendContainerApp-deployment'), '2025-04-01').outputs.fqdn.value]"
+    },
+    "qdrantDashboardUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "Qdrant Dashboard URL (if external access enabled)"
+      },
+      "value": "[format('https://{0}/dashboard', reference(resourceId('Microsoft.Resources/deployments', 'qdrantContainerApp-deployment'), '2025-04-01').outputs.fqdn.value)]"
     }
   }
 }

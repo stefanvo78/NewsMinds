@@ -1,7 +1,7 @@
 """RSS feed adapter - fetches articles from RSS/Atom feeds."""
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import feedparser
 import httpx
@@ -50,7 +50,7 @@ async def fetch_rss_articles(
         # Parse published date
         published_at = None
         if hasattr(entry, "published_parsed") and entry.published_parsed:
-            published_at = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
+            published_at = datetime(*entry.published_parsed[:6], tzinfo=UTC)
 
         articles.append(
             {

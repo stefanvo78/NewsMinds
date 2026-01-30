@@ -1,7 +1,7 @@
 """NewsAPI.org adapter - fetches articles from the NewsAPI service."""
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 
 import httpx
 

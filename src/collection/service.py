@@ -5,14 +5,14 @@ Orchestrates the adapters and handles deduplication + storage + ingestion.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.models import Source, Article
-from src.collection.adapters.rss_adapter import fetch_rss_articles
+from src.api.models import Article, Source
 from src.collection.adapters.newsapi_adapter import fetch_newsapi_articles
+from src.collection.adapters.rss_adapter import fetch_rss_articles
 from src.rag.retriever import rag_retriever
 
 logger = logging.getLogger(__name__)
@@ -88,7 +88,7 @@ async def collect_from_source(
             content=raw.get("content"),
             author=raw.get("author"),
             published_at=raw.get("published_at"),
-            fetched_at=datetime.now(timezone.utc),
+            fetched_at=datetime.now(UTC),
         )
         db.add(article)
         await db.flush()  # Get the ID without committing

@@ -6,9 +6,6 @@ Claude (or any MCP-compatible LLM) can use.
 """
 
 import asyncio
-from src.collection.adapters.rss_adapter import fetch_rss_articles
-from src.collection.adapters.newsapi_adapter import fetch_newsapi_articles
-
 import json
 
 from mcp.server import Server
@@ -16,6 +13,8 @@ from mcp.types import (
     TextContent,
     Tool,
 )
+
+from src.collection.adapters.newsapi_adapter import fetch_newsapi_articles
 
 # Create the MCP server
 server = Server("news-search")

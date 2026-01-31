@@ -48,7 +48,8 @@ async def list_sources(
     query = select(Source)
     if active_only:
         query = query.where(Source.is_active.is_(True))
-    query = query.offset(skip).limit(limit)
+    # MSSQL requires ORDER BY when using OFFSET/LIMIT
+    query = query.order_by(Source.name).offset(skip).limit(limit)
 
     result = await db.execute(query)
     return list(result.scalars().all())

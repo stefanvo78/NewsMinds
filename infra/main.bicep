@@ -222,7 +222,7 @@ module apiContainerApp 'modules/container-app-api.bicep' = {
     containerAppsEnvId: containerAppsEnv.outputs.id
     appInsightsConnectionString: appInsights.outputs.connectionString
     keyVaultName: keyVault.outputs.name
-    databaseUrl: 'mssql+aioodbc://${sqlAdminLogin}:${sqlAdminPassword}@${sqlDatabase.outputs.fqdn}:1433/newsminds?driver=ODBC+Driver+18+for+SQL+Server&encrypt=yes&TrustServerCertificate=no'
+    databaseUrl: 'mssql+aioodbc://${sqlAdminLogin}:${sqlAdminPassword}@${sqlDatabase.outputs.fqdn}:1433/newsminds?driver=ODBC+Driver+18+for+SQL+Server&encrypt=yes&TrustServerCertificate=no&Connection+Timeout=30'
     secretKey: secretKey
     openaiApiKey: openaiApiKey
     qdrantUrl: qdrantContainerApp.outputs.url

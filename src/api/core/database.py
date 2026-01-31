@@ -26,6 +26,10 @@ engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,  # Log SQL statements when DEBUG=True
     pool_pre_ping=True,  # Verify connections before using them
+    pool_size=5,  # Maximum number of connections to keep in the pool
+    max_overflow=10,  # Allow 10 additional connections beyond pool_size
+    pool_timeout=30,  # Seconds to wait for available connection
+    pool_recycle=1800,  # Recycle connections after 30 minutes
 )
 
 # Create a session factory

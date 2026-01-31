@@ -260,8 +260,8 @@ jobs:
 
           echo "acr_name=$acr_name" >> $GITHUB_OUTPUT
           echo "acr_login_server=$acr_login_server" >> $GITHUB_OUTPUT
-          echo "api_image_tag=$acr_login_server/newsminds-api:${{ github.sha }}" >> $GITHUB_OUTPUT
-          echo "frontend_image_tag=$acr_login_server/newsminds-frontend:${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "api_image_tag=$acr_login_server/newsmind-api:${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "frontend_image_tag=$acr_login_server/newsmind-frontend:${{ github.sha }}" >> $GITHUB_OUTPUT
           echo "api_hostname=$api_hostname" >> $GITHUB_OUTPUT
 
       # Login to Azure Container Registry
@@ -296,7 +296,7 @@ jobs:
           if [ -n "$api_hostname" ]; then
             api_url="https://${api_hostname}"
           else
-            api_url="https://newsminds-${{ env.ENVIRONMENT }}-api.$(az containerapp env show --name newsminds-${{ env.ENVIRONMENT }}-cae --resource-group newsmind-${{ env.ENVIRONMENT }}-rg --query properties.defaultDomain -o tsv 2>/dev/null || echo 'placeholder.azurecontainerapps.io')"
+            api_url="https://newsmind-${{ env.ENVIRONMENT }}-api.$(az containerapp env show --name newsmind-${{ env.ENVIRONMENT }}-cae --resource-group newsmind-${{ env.ENVIRONMENT }}-rg --query properties.defaultDomain -o tsv 2>/dev/null || echo 'placeholder.azurecontainerapps.io')"
           fi
 
           echo "🐳 Building Frontend Docker image with API_URL=${api_url}..."
@@ -316,7 +316,7 @@ jobs:
           echo "🔧 Configuring ACR registry for API Container App..."
 
           az containerapp registry set \
-            --name "newsminds-${{ env.ENVIRONMENT }}-api" \
+            --name "newsmind-${{ env.ENVIRONMENT }}-api" \
             --resource-group "newsmind-${{ env.ENVIRONMENT }}-rg" \
             --server ${{ steps.infra.outputs.acr_login_server }} \
             --username "${{ steps.acr_creds.outputs.username }}" \
@@ -325,7 +325,7 @@ jobs:
           echo "🚀 Deploying API image..."
 
           az containerapp update \
-            --name "newsminds-${{ env.ENVIRONMENT }}-api" \
+            --name "newsmind-${{ env.ENVIRONMENT }}-api" \
             --resource-group "newsmind-${{ env.ENVIRONMENT }}-rg" \
             --image ${{ steps.infra.outputs.api_image_tag }}
 
@@ -337,7 +337,7 @@ jobs:
           echo "🔧 Configuring ACR registry for Frontend Container App..."
 
           az containerapp registry set \
-            --name "newsminds-${{ env.ENVIRONMENT }}-frontend" \
+            --name "newsmind-${{ env.ENVIRONMENT }}-frontend" \
             --resource-group "newsmind-${{ env.ENVIRONMENT }}-rg" \
             --server ${{ steps.infra.outputs.acr_login_server }} \
             --username "${{ steps.acr_creds.outputs.username }}" \
@@ -346,7 +346,7 @@ jobs:
           echo "🚀 Deploying Frontend image..."
 
           az containerapp update \
-            --name "newsminds-${{ env.ENVIRONMENT }}-frontend" \
+            --name "newsmind-${{ env.ENVIRONMENT }}-frontend" \
             --resource-group "newsmind-${{ env.ENVIRONMENT }}-rg" \
             --image ${{ steps.infra.outputs.frontend_image_tag }}
 
@@ -419,6 +419,6 @@ jobs:
           echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| API Image | \`${{ steps.infra.outputs.api_image_tag }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| API Container App | \`newsminds-${{ env.ENVIRONMENT }}-api\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| API Container App | \`newsmind-${{ env.ENVIRONMENT }}-api\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Frontend Image | \`${{ steps.infra.outputs.frontend_image_tag }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Frontend Container App | \`newsminds-${{ env.ENVIRONMENT }}-frontend\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend Container App | \`newsmind-${{ env.ENVIRONMENT }}-frontend\` |" >> $GITHUB_STEP_SUMMARY

@@ -41,7 +41,9 @@ DEFAULT_SOURCES = [
         "https://www.reuters.com",
         "International news agency providing global news coverage",
         "rss",
-        {"feed_url": "https://www.reutersagency.com/feed/?taxonomy=best-sectors&post_type=best"},
+        {
+            "feed_url": "https://www.reutersagency.com/feed/?taxonomy=best-sectors&post_type=best"
+        },
     ),
     (
         "Associated Press",
@@ -91,7 +93,9 @@ DEFAULT_SOURCES = [
         "https://www.theglobeandmail.com",
         "Canada's national newspaper of record, editorially independent",
         "rss",
-        {"feed_url": "https://www.theglobeandmail.com/arc/outboundfeeds/rss/category/world/"},
+        {
+            "feed_url": "https://www.theglobeandmail.com/arc/outboundfeeds/rss/category/world/"
+        },
     ),
     (
         "CBC News",
@@ -105,7 +109,9 @@ DEFAULT_SOURCES = [
         "https://www.thestar.com",
         "Canada's largest-circulation newspaper, guided by the Atkinson Principles",
         "rss",
-        {"feed_url": "https://www.thestar.com/search/?f=rss&t=article&c=news*&l=50&s=start_time&sd=desc"},
+        {
+            "feed_url": "https://www.thestar.com/search/?f=rss&t=article&c=news*&l=50&s=start_time&sd=desc"
+        },
     ),
     (
         "The Conversation",
@@ -368,7 +374,9 @@ async def seed_sources():
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
         print("ERROR: DATABASE_URL environment variable is required")
-        print("Example: DATABASE_URL=sqlite+aiosqlite:///./data/newsminds.db python scripts/seed_sources.py")
+        print(
+            "Example: DATABASE_URL=sqlite+aiosqlite:///./data/newsminds.db python scripts/seed_sources.py"
+        )
         sys.exit(1)
 
     engine = create_async_engine(database_url, echo=False)

@@ -101,9 +101,7 @@ if _azure_monitor_configured:
 # Configure CORS (Cross-Origin Resource Sharing)
 # This allows frontend apps on different domains to call our API
 cors_origins = (
-    ["*"]
-    if settings.DEBUG
-    else [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+    ["*"] if settings.DEBUG else [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
 )
 app.add_middleware(
     CORSMiddleware,

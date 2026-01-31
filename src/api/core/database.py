@@ -20,17 +20,25 @@ from sqlalchemy.ext.asyncio import (
 from src.api.core.config import settings
 
 
+# Determine engine kwargs based on database type
+# SQLite doesn't support pool_size, max_overflow, pool_timeout
+engine_kwargs = {
+    "echo": settings.DEBUG,  # Log SQL statements when DEBUG=True
+    "pool_pre_ping": True,  # Verify connections before using them
+}
+
+# Add pool settings only for non-SQLite databases
+if not settings.DATABASE_URL.startswith("sqlite"):
+    engine_kwargs.update({
+        "pool_size": 5,  # Maximum number of connections to keep in the pool
+        "max_overflow": 10,  # Allow 10 additional connections beyond pool_size
+        "pool_timeout": 30,  # Seconds to wait for available connection
+        "pool_recycle": 1800,  # Recycle connections after 30 minutes
+    })
+
 # Create the async engine
 # The engine manages the connection pool to the database
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=settings.DEBUG,  # Log SQL statements when DEBUG=True
-    pool_pre_ping=True,  # Verify connections before using them
-    pool_size=5,  # Maximum number of connections to keep in the pool
-    max_overflow=10,  # Allow 10 additional connections beyond pool_size
-    pool_timeout=30,  # Seconds to wait for available connection
-    pool_recycle=1800,  # Recycle connections after 30 minutes
-)
+engine = create_async_engine(settings.DATABASE_URL, **engine_kwargs)
 
 # Create a session factory
 # async_sessionmaker creates AsyncSession instances with consistent settings

@@ -29,12 +29,14 @@ engine_kwargs = {
 
 # Add pool settings only for non-SQLite databases
 if not settings.DATABASE_URL.startswith("sqlite"):
-    engine_kwargs.update({
-        "pool_size": 5,  # Maximum number of connections to keep in the pool
-        "max_overflow": 10,  # Allow 10 additional connections beyond pool_size
-        "pool_timeout": 30,  # Seconds to wait for available connection
-        "pool_recycle": 1800,  # Recycle connections after 30 minutes
-    })
+    engine_kwargs.update(
+        {
+            "pool_size": 5,  # Maximum number of connections to keep in the pool
+            "max_overflow": 10,  # Allow 10 additional connections beyond pool_size
+            "pool_timeout": 30,  # Seconds to wait for available connection
+            "pool_recycle": 1800,  # Recycle connections after 30 minutes
+        }
+    )
 
 # Create the async engine
 # The engine manages the connection pool to the database

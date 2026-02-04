@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import * as api from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,14 @@ export default function SourcesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCollecting, setIsCollecting] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }, []);
 
   const fetchSources = async () => {
     try {
@@ -28,9 +36,48 @@ export default function SourcesPage() {
     }
   };
 
+  // Check if a collection is already running on mount
   useEffect(() => {
+    const checkStatus = async () => {
+      try {
+        const status = await api.getCollectionStatus();
+        if (status.running) {
+          setIsCollecting(true);
+          startPolling();
+        }
+      } catch {
+        // ignore - status endpoint may not exist yet
+      }
+    };
     fetchSources();
+    checkStatus();
+    return stopPolling;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const startPolling = useCallback(() => {
+    stopPolling();
+    pollRef.current = setInterval(async () => {
+      try {
+        const status = await api.getCollectionStatus();
+        if (!status.running) {
+          stopPolling();
+          setIsCollecting(false);
+          if (status.error) {
+            toast.error(`Collection failed: ${status.error}`);
+          } else if (status.result) {
+            toast.success(
+              `Collected ${status.result.total_new} new articles from ${status.result.sources_processed} sources`
+            );
+          }
+          // Refresh sources list after collection
+          fetchSources();
+        }
+      } catch {
+        // ignore polling errors
+      }
+    }, 3000);
+  }, [stopPolling]);
 
   const handleCreate = async (data: SourceCreate) => {
     await api.createSource(data);
@@ -41,13 +88,11 @@ export default function SourcesPage() {
   const handleCollectAll = async () => {
     setIsCollecting(true);
     try {
-      const result = await api.collectAll();
-      toast.success(
-        `Collected ${result.articles_stored} articles from ${result.sources_processed} sources`
-      );
+      await api.collectAll();
+      toast.info("Collection started in background...");
+      startPolling();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Collection failed");
-    } finally {
+      toast.error(err instanceof Error ? err.message : "Failed to start collection");
       setIsCollecting(false);
     }
   };
@@ -72,7 +117,7 @@ export default function SourcesPage() {
             ) : (
               <RefreshCw className="mr-2 h-4 w-4" />
             )}
-            Collect All
+            {isCollecting ? "Collecting..." : "Collect All"}
           </Button>
           <Button onClick={() => setShowCreate(true)}>
             <Plus className="mr-2 h-4 w-4" />

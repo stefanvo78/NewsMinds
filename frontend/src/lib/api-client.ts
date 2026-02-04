@@ -10,8 +10,8 @@ import type {
   ArticleResponse,
   ArticleListResponse,
   BriefingResponse,
-  CollectAllResult,
-  CollectSourceResult,
+  CollectionStatus,
+  SourceCollectionStatus,
   SummarizeResponse,
   IngestResponse,
   IngestAllResponse,
@@ -191,14 +191,24 @@ export async function ingestAllArticles(): Promise<IngestAllResponse> {
 }
 
 // === Collection ===
-export async function collectAll(): Promise<CollectAllResult> {
-  return request<CollectAllResult>("/collection/collect-all", { method: "POST" });
-}
-
-export async function collectSource(id: string): Promise<CollectSourceResult> {
-  return request<CollectSourceResult>(`/collection/collect/${id}`, {
+export async function collectAll(): Promise<{ message: string; status: string }> {
+  return request<{ message: string; status: string }>("/collection/collect-all", {
     method: "POST",
   });
+}
+
+export async function getCollectionStatus(): Promise<CollectionStatus> {
+  return request<CollectionStatus>("/collection/status");
+}
+
+export async function collectSource(id: string): Promise<{ message: string; status: string }> {
+  return request<{ message: string; status: string }>(`/collection/collect/${id}`, {
+    method: "POST",
+  });
+}
+
+export async function getSourceCollectionStatus(id: string): Promise<SourceCollectionStatus> {
+  return request<SourceCollectionStatus>(`/collection/status/${id}`);
 }
 
 // === Intelligence ===

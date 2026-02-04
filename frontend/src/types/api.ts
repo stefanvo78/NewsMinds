@@ -90,22 +90,37 @@ export interface BriefingResponse {
 }
 
 // === Collection ===
+export interface CollectionStatus {
+  running: boolean;
+  started_at: string | null;
+  finished_at: string | null;
+  result: CollectAllResult | null;
+  error: string | null;
+}
+
 export interface CollectAllResult {
   sources_processed: number;
-  total_articles_fetched: number;
-  articles_stored: number;
-  articles_skipped: number;
-  total_chunks_created: number;
-  duration_seconds: number;
+  total_fetched: number;
+  total_new: number;
+  total_skipped: number;
+  total_ingested: number;
+  per_source: Record<string, unknown>;
 }
 
 export interface CollectSourceResult {
   source: string;
-  articles_fetched: number;
-  articles_stored: number;
-  articles_skipped: number;
-  total_chunks_created: number;
-  duration_seconds: number;
+  fetched: number;
+  new: number;
+  skipped: number;
+  ingested: number;
+}
+
+export interface SourceCollectionStatus {
+  running: boolean;
+  started_at: string | null;
+  finished_at: string | null;
+  result: CollectSourceResult | null;
+  error: string | null;
 }
 
 // === Summarize / Ingest ===

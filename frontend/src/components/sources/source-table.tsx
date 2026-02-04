@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import * as api from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,57 @@ interface SourceTableProps {
 export function SourceTable({ sources, onRefresh }: SourceTableProps) {
   const [editingSource, setEditingSource] = useState<SourceResponse | null>(null);
   const [deletingSource, setDeletingSource] = useState<SourceResponse | null>(null);
-  const [collectingId, setCollectingId] = useState<string | null>(null);
+  const [collectingIds, setCollectingIds] = useState<Set<string>>(new Set());
+  const pollRefs = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
+
+  const stopPolling = useCallback((sourceId: string) => {
+    const interval = pollRefs.current.get(sourceId);
+    if (interval) {
+      clearInterval(interval);
+      pollRefs.current.delete(sourceId);
+    }
+  }, []);
+
+  const stopAllPolling = useCallback(() => {
+    pollRefs.current.forEach((interval) => clearInterval(interval));
+    pollRefs.current.clear();
+  }, []);
+
+  // Clean up all polling on unmount
+  useEffect(() => {
+    return stopAllPolling;
+  }, [stopAllPolling]);
+
+  const startPolling = useCallback(
+    (sourceId: string) => {
+      stopPolling(sourceId);
+      const interval = setInterval(async () => {
+        try {
+          const status = await api.getSourceCollectionStatus(sourceId);
+          if (!status.running) {
+            stopPolling(sourceId);
+            setCollectingIds((prev) => {
+              const next = new Set(prev);
+              next.delete(sourceId);
+              return next;
+            });
+            if (status.error) {
+              toast.error(`Collection failed: ${status.error}`);
+            } else if (status.result) {
+              toast.success(
+                `Collected ${status.result.new} new articles from ${status.result.source}`
+              );
+            }
+            onRefresh();
+          }
+        } catch {
+          // ignore polling errors
+        }
+      }, 3000);
+      pollRefs.current.set(sourceId, interval);
+    },
+    [stopPolling, onRefresh]
+  );
 
   const handleUpdate = async (data: SourceCreate) => {
     if (!editingSource) return;
@@ -59,17 +109,18 @@ export function SourceTable({ sources, onRefresh }: SourceTableProps) {
   };
 
   const handleCollect = async (source: SourceResponse) => {
-    setCollectingId(source.id);
+    setCollectingIds((prev) => new Set(prev).add(source.id));
     try {
-      const result = await api.collectSource(source.id);
-      toast.success(
-        `Collected ${result.articles_stored} articles from ${result.source}`
-      );
-      await onRefresh();
+      await api.collectSource(source.id);
+      toast.info(`Collection started for '${source.name}'...`);
+      startPolling(source.id);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Collection failed");
-    } finally {
-      setCollectingId(null);
+      setCollectingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(source.id);
+        return next;
+      });
     }
   };
 
@@ -131,10 +182,10 @@ export function SourceTable({ sources, onRefresh }: SourceTableProps) {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleCollect(source)}
-                        disabled={collectingId === source.id}
+                        disabled={collectingIds.has(source.id)}
                         title="Collect articles"
                       >
-                        {collectingId === source.id ? (
+                        {collectingIds.has(source.id) ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <Play className="h-4 w-4" />

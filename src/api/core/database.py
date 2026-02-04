@@ -11,6 +11,7 @@ For Azure SQL, we use the aioodbc driver which provides async ODBC support.
 
 from collections.abc import AsyncGenerator
 
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -41,6 +42,19 @@ if not settings.DATABASE_URL.startswith("sqlite"):
 # Create the async engine
 # The engine manages the connection pool to the database
 engine = create_async_engine(settings.DATABASE_URL, **engine_kwargs)
+
+# SQLite: enable WAL mode and busy timeout for multi-worker concurrency.
+# WAL allows concurrent readers alongside one writer.
+# busy_timeout makes SQLite retry for 5 s instead of immediately failing
+# with "database is locked".
+if settings.DATABASE_URL.startswith("sqlite"):
+
+    @event.listens_for(engine.sync_engine, "connect")
+    def _set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA busy_timeout=5000")
+        cursor.close()
 
 # Create a session factory
 # async_sessionmaker creates AsyncSession instances with consistent settings
